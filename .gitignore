@@ -1,6 +1,13 @@
 # Node dependencies
 node_modules/
 
+# Next.js build output
+.next/
+*.tsbuildinfo
+
+# Editor / assistant local config
+.claude/
+
 # Python cache and environments
 __pycache__/
 *.pyc

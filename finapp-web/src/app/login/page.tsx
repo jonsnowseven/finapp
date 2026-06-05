@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { createSupabaseBrowserClient } from '../../lib/supabase-browser';
 
@@ -9,7 +9,16 @@ const ERROR_MESSAGES: Record<string, string> = {
   signup_disabled: 'New sign-ups are disabled. Your account must be pre-approved.',
 };
 
+// useSearchParams() requires a Suspense boundary during static generation (Next 14).
 export default function LoginPage() {
+  return (
+    <Suspense fallback={null}>
+      <LoginContent />
+    </Suspense>
+  );
+}
+
+function LoginContent() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const searchParams = useSearchParams();
