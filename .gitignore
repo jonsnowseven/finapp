@@ -1,0 +1,15 @@
+# Node dependencies
+node_modules/
+
+# Python cache and environments
+__pycache__/
+*.pyc
+finapp-parser/venv/
+
+# Environment variables (NEVER COMMIT THESE)
+.env
+.env.local
+.env*.local
+
+# Local PDF Data (NEVER COMMIT THIS)
+finapp-parser/data/

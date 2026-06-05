@@ -1,0 +1,8 @@
+# These are the runtime dependencies for the finapp-parser.
+# Run individual scripts with: uv run <script>.py
+# Or install into a venv with: uv pip install -r requirements.txt
+
+supabase>=2.0.0
+python-dotenv>=1.0.0
+pdfplumber>=0.11.0
+pandas>=2.0.0
