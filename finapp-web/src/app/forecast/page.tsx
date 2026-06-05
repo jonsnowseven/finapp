@@ -1,10 +1,10 @@
 'use client';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-  AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+  AreaChart, Area, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from 'recharts';
 import { supabase } from '../../lib/supabase';
-import { entityHex, typeSign, defaultReturn, defaultTax } from '../../lib/entities';
+import { entityHex, typeSign, defaultReturn, defaultTax, DEFAULT_MONTHLY_BUY } from '../../lib/entities';
 
 interface Assumption {
   entity: string;
@@ -31,10 +31,59 @@ function netAt(r: Assumption, months: number): number {
 
 const MONTHS_BACK = 12; // window for detecting recurring contributions
 
+interface Mortgage {
+  balance: number;    // outstanding principal (€)
+  annualPct: number;  // annual interest rate (PT: Euribor + spread)
+  payment: number;    // monthly payment / prestação (€)
+}
+const MORTGAGE_KEY = 'finapp_mortgage';
+
+interface Fire {
+  amount: number;            // expenses
+  period: 'month' | 'year';  // expenses period
+  swr: number;               // safe withdrawal rate (%)
+  inflation: number;         // annual inflation (%)
+  retYears: number;          // years to traditional retirement (for Coast FIRE)
+}
+const FIRE_KEY = 'finapp_fire';
+
+function monthLabel(m: number): string {
+  const d = new Date();
+  d.setMonth(d.getMonth() + m);
+  return d.toLocaleDateString('en-GB', { month: 'short', year: 'numeric' });
+}
+
 export default function ForecastPage() {
   const [rows, setRows] = useState<Assumption[]>([]);
   const [years, setYears] = useState(20);
   const [loading, setLoading] = useState(true);
+  const [mortgage, setMortgage] = useState<Mortgage>({ balance: 0, annualPct: 3.5, payment: 0 });
+
+  // Mortgage has no DB source — persist its inputs locally.
+  useEffect(() => {
+    const s = localStorage.getItem(MORTGAGE_KEY);
+    if (s) { try { setMortgage(JSON.parse(s)); } catch { /* ignore */ } }
+  }, []);
+  function updateMortgage(field: keyof Mortgage, value: number) {
+    setMortgage((prev) => {
+      const next = { ...prev, [field]: value };
+      localStorage.setItem(MORTGAGE_KEY, JSON.stringify(next));
+      return next;
+    });
+  }
+
+  const [fire, setFire] = useState<Fire>({ amount: 0, period: 'month', swr: 4, inflation: 2, retYears: 30 });
+  useEffect(() => {
+    const s = localStorage.getItem(FIRE_KEY);
+    if (s) { try { setFire(JSON.parse(s)); } catch { /* ignore */ } }
+  }, []);
+  function updateFire<K extends keyof Fire>(field: K, value: Fire[K]) {
+    setFire((prev) => {
+      const next = { ...prev, [field]: value };
+      localStorage.setItem(FIRE_KEY, JSON.stringify(next));
+      return next;
+    });
+  }
 
   const load = useCallback(async () => {
     const { data: txs } = await supabase.from('transactions').select('*');
@@ -67,7 +116,7 @@ export default function ForecastPage() {
     setRows(entities.map((e) => ({
       entity: e,
       start: Math.round((valByEntity[e] ?? net[e] ?? 0) * 100) / 100,
-      monthly: Math.round(((recent[e] ?? 0) / MONTHS_BACK) * 100) / 100,
+      monthly: DEFAULT_MONTHLY_BUY[e] ?? Math.round(((recent[e] ?? 0) / MONTHS_BACK) * 100) / 100,
       annualPct: defaultReturn(e),
       taxPct: defaultTax(e),
     })));
@@ -109,6 +158,72 @@ export default function ForecastPage() {
     return { series, entities: ents };
   }, [rows, years]);
 
+  // Mortgage amortization vs after-tax investments. Finds:
+  //  - payoffMonth: loan balance reaches 0 (scheduled payoff)
+  //  - crossoverMonth: investments (net of tax) ≥ remaining balance (could clear it)
+  const mort = useMemo(() => {
+    const months = years * 12;
+    const i = mortgage.annualPct / 100 / 12;
+    const combined: any[] = [];
+    let bal = mortgage.balance;
+    let payoffMonth = -1;
+    let crossoverMonth = -1;
+
+    for (let m = 0; m <= months; m++) {
+      const net = rows.reduce((a, r) => a + netAt(r, m), 0);
+      const curBal = Math.max(0, bal);
+      combined.push({ label: monthLabel(m).slice(-4), net: Math.round(net), mortgage: Math.round(curBal) });
+      if (payoffMonth < 0 && curBal <= 0 && mortgage.balance > 0) payoffMonth = m;
+      if (crossoverMonth < 0 && mortgage.balance > 0 && net >= curBal) crossoverMonth = m;
+      bal = bal > 0 ? bal * (1 + i) - mortgage.payment : 0;
+    }
+    // payment must exceed first month's interest, else it never amortizes
+    const neverPayoff = mortgage.balance > 0 && mortgage.payment <= mortgage.balance * i;
+    const totalInterest = payoffMonth > 0 ? mortgage.payment * payoffMonth - mortgage.balance : 0;
+    return { combined, payoffMonth, crossoverMonth, neverPayoff, totalInterest };
+  }, [rows, years, mortgage]);
+
+  // FIRE — Financial Independence, Retire Early.
+  //  - FIRE number = annual expenses / SWR (4% rule ⇒ 25×; Trinity study).
+  //  - Target is inflation-adjusted (real terms); compared to after-tax investments.
+  //  - FI date: first month net investments ≥ inflated target.
+  //  - Coast FIRE: current portfolio, with NO further contributions, reaches the
+  //    (inflated) target by traditional retirement on its own growth.
+  const fireCalc = useMemo(() => {
+    const annual = fire.period === 'year' ? fire.amount : fire.amount * 12;
+    const swr = fire.swr / 100;
+    const infl = fire.inflation / 100;
+    const fireNumber = swr > 0 ? annual / swr : 0;          // in today's money
+    const months = years * 12;
+
+    const netTotal = (t: number) => rows.reduce((a, r) => a + netAt(r, t), 0);
+
+    // Portfolio-value-weighted blended return for the coast phase
+    const totalStart = rows.reduce((a, r) => a + r.start, 0);
+    const blended = totalStart > 0
+      ? rows.reduce((a, r) => a + r.start * r.annualPct, 0) / totalStart
+      : 7;
+
+    let fiMonth = -1;
+    for (let t = 0; t <= months; t++) {
+      const target = fireNumber * Math.pow(1 + infl, t / 12);
+      if (netTotal(t) >= target && fireNumber > 0) { fiMonth = t; break; }
+    }
+
+    // Coast FIRE: target at the traditional-retirement date
+    const retMonths = fire.retYears * 12;
+    const targetAtRet = fireNumber * Math.pow(1 + infl, fire.retYears);
+    let coastMonth = -1;
+    for (let t = 0; t <= Math.min(months, retMonths); t++) {
+      const grown = netTotal(t) * Math.pow(1 + blended / 100, (retMonths - t) / 12);
+      if (grown >= targetAtRet && fireNumber > 0) { coastMonth = t; break; }
+    }
+
+    const multiple = swr > 0 ? 1 / swr : 0;       // e.g. 25× at 4%
+    const monthlyIncome = (fireNumber * swr) / 12; // safe monthly draw at FI (today's money)
+    return { annual, fireNumber, fiMonth, coastMonth, multiple, monthlyIncome, blended };
+  }, [rows, years, fire]);
+
   const fmt = (n: number) =>
     `€${n.toLocaleString('pt-PT', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
 
@@ -123,8 +238,9 @@ export default function ForecastPage() {
       <div className="mb-8">
         <h2 className="text-2xl font-bold">Forecast</h2>
         <p className="text-gray-500 dark:text-gray-400 text-sm">
-          Projected growth assuming recurring monthly buys continue. Entities with no recent
-          recurring buys just grow at their assumed rate. All assumptions are editable.
+          See where your money could end up if you keep investing the way you do now. Where you
+          buy regularly, those monthly buys carry on; everything else simply grows at its assumed
+          rate. Every number below is an editable assumption — change any of them to explore.
         </p>
       </div>
 
@@ -141,10 +257,11 @@ export default function ForecastPage() {
             <Card label="Net growth (after tax)" value={fmt(growthNet)} />
             <div className="bg-white dark:bg-[#0a0a0a] p-5 rounded-2xl border border-gray-200 dark:border-gold-500/20">
               <label className="text-sm font-medium text-gray-400 uppercase tracking-wider">Horizon (years)</label>
+              <p className="text-[11px] text-gray-400 normal-case mt-1">How far into the future to project.</p>
               <input
                 type="range" min={1} max={40} value={years}
                 onChange={(e) => setYears(Number(e.target.value))}
-                className="w-full mt-3 accent-indigo-600 dark:accent-gold-500"
+                className="w-full mt-2 accent-indigo-600 dark:accent-gold-500"
               />
               <p className="text-2xl font-bold dark:text-white">{years}y</p>
             </div>
@@ -182,12 +299,12 @@ export default function ForecastPage() {
               <thead>
                 <tr className="bg-gray-50 dark:bg-[#111] border-b border-gray-200 dark:border-gold-500/20 text-xs font-bold text-gray-400 dark:text-gold-500 uppercase tracking-wider">
                   <th className="p-4">Institution</th>
-                  <th className="p-4 text-right">Start value (€)</th>
-                  <th className="p-4 text-right">Monthly buy (€)</th>
-                  <th className="p-4 text-right">Annual return (%)</th>
-                  <th className="p-4 text-right">Tax on gains (%)</th>
-                  <th className="p-4 text-right">20y net</th>
-                  {years !== 20 && <th className="p-4 text-right">{years}y net</th>}
+                  <th className="p-4 text-right" title="What this holding is worth today. Pre-filled from your latest valuation or amount invested — editable.">Start value (€)</th>
+                  <th className="p-4 text-right" title="Your typical monthly contribution here — editable.">Monthly buy (€)</th>
+                  <th className="p-4 text-right" title="Assumed yearly growth rate for this holding.">Annual return (%)</th>
+                  <th className="p-4 text-right" title="Portuguese tax paid on the profit when you cash out (gains only, not the money you put in).">Tax on gains (%)</th>
+                  <th className="p-4 text-right" title="Projected value after 20 years, after tax.">20y net</th>
+                  {years !== 20 && <th className="p-4 text-right" title={`Projected value after ${years} years, after tax.`}>{years}y net</th>}
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100 dark:divide-gray-800/50">
@@ -211,12 +328,144 @@ export default function ForecastPage() {
             </table>
           </div>
 
-          <p className="text-xs text-gray-400 dark:text-gray-500 mt-4">
-            Estimates only. Compounded monthly; contributions added at month end. The chart shows
-            gross (unrealised) value; net columns apply Portuguese tax on gains at withdrawal
-            (28% equities/crypto, ~8% PPR ≥5y, Aforro 28%; Revolut already net). Defaults are
-            editable and not tax advice. Market returns are assumptions — actual results vary and
-            can be negative.
+          {/* FIRE — Financial Independence */}
+          <div className="mt-8 mb-3 flex items-baseline justify-between flex-wrap gap-2">
+            <h3 className="text-lg font-bold">FIRE — Financial Independence</h3>
+            <span className="text-xs text-gray-400">When you could live off your investments. Saved on this device.</span>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+            <div className="bg-white dark:bg-[#0a0a0a] p-5 rounded-2xl border border-gray-200 dark:border-gold-500/20">
+              <div className="flex items-center justify-between mb-2">
+                <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Expenses (€)</label>
+                <button
+                  onClick={() => updateFire('period', fire.period === 'month' ? 'year' : 'month')}
+                  className="text-xs px-2 py-0.5 rounded-md border border-gray-300 dark:border-gold-500/30 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-[#1a1a1a]"
+                >
+                  / {fire.period}
+                </button>
+              </div>
+              <NumInput value={fire.amount} step={fire.period === 'year' ? 1000 : 100} onChange={(v) => updateFire('amount', v)} />
+              <p className="text-[11px] text-gray-400 normal-case mt-2">What you spend to live. Use the toggle for monthly or yearly.</p>
+            </div>
+            <div className="bg-white dark:bg-[#0a0a0a] p-5 rounded-2xl border border-gray-200 dark:border-gold-500/20">
+              <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Withdrawal rate (%)</label>
+              <div className="mt-2"><NumInput value={fire.swr} step={0.25} onChange={(v) => updateFire('swr', v)} /></div>
+              <p className="text-[11px] text-gray-400 normal-case mt-2">% of your pot you'd draw each year in retirement. 4% is the common rule.</p>
+            </div>
+            <div className="bg-white dark:bg-[#0a0a0a] p-5 rounded-2xl border border-gray-200 dark:border-gold-500/20">
+              <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Inflation (%)</label>
+              <div className="mt-2"><NumInput value={fire.inflation} step={0.1} onChange={(v) => updateFire('inflation', v)} /></div>
+              <p className="text-[11px] text-gray-400 normal-case mt-2">Expected yearly rise in prices — keeps the target realistic.</p>
+            </div>
+            <div className="bg-white dark:bg-[#0a0a0a] p-5 rounded-2xl border border-gray-200 dark:border-gold-500/20">
+              <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Retire in (years)</label>
+              <div className="mt-2"><NumInput value={fire.retYears} step={1} onChange={(v) => updateFire('retYears', v)} /></div>
+              <p className="text-[11px] text-gray-400 normal-case mt-2">Years until your normal retirement — used for Coast FIRE.</p>
+            </div>
+          </div>
+
+          {fire.amount > 0 && (
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+              <Card label={`FIRE number (${fireCalc.multiple.toFixed(0)}× annual)`} accent value={fmt(fireCalc.fireNumber)} />
+              <Card
+                label="FI date (full FIRE)"
+                value={fireCalc.fiMonth >= 0 ? `${monthLabel(fireCalc.fiMonth)} · ${(fireCalc.fiMonth / 12).toFixed(1)}y` : `> ${years}y`}
+              />
+              <Card
+                label="Coast FIRE reached"
+                value={fireCalc.coastMonth >= 0 ? `${monthLabel(fireCalc.coastMonth)} · ${(fireCalc.coastMonth / 12).toFixed(1)}y` : `> horizon`}
+              />
+              <Card label="Safe income at FI /mo" value={`${fmt(fireCalc.monthlyIncome)} (today)`} />
+            </div>
+          )}
+
+          <div className="text-sm text-gray-500 dark:text-gray-400 -mt-2 mb-6 leading-relaxed space-y-2 max-w-3xl">
+            <p>How these numbers work:</p>
+            <ul className="space-y-1.5 list-disc pl-5">
+              <li><strong>FIRE number</strong> — how much you need invested to live off it. It's your yearly expenses divided by the withdrawal rate (at 4%, that's 25× your yearly spending).</li>
+              <li><strong>FI date</strong> — when your investments (after tax) first cover that target. The target rises with inflation, so it reflects real purchasing power.</li>
+              <li><strong>Coast FIRE</strong> — the moment you could stop investing entirely and still reach the target by your retirement year, just from growth on what you already have.</li>
+            </ul>
+            <p className="text-xs">Tip: 4% suits a ~30-year retirement. For an early retirement of 40+ years, a safer 3.25–3.5% withdrawal rate guards against a bad run of early market returns.</p>
+          </div>
+
+          {/* Mortgage — Crédito Habitação */}
+          <div className="mt-8 mb-3 flex items-baseline justify-between flex-wrap gap-2">
+            <h3 className="text-lg font-bold">Crédito Habitação</h3>
+            <span className="text-xs text-gray-400">When your home loan is paid off — and when your investments could clear it. Saved on this device.</span>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+            <div className="bg-white dark:bg-[#0a0a0a] p-5 rounded-2xl border border-gray-200 dark:border-gold-500/20">
+              <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Outstanding balance (€)</label>
+              <div className="mt-2"><NumInput value={mortgage.balance} step={1000} onChange={(v) => updateMortgage('balance', v)} /></div>
+              <p className="text-[11px] text-gray-400 normal-case mt-2">How much you still owe on the loan today.</p>
+            </div>
+            <div className="bg-white dark:bg-[#0a0a0a] p-5 rounded-2xl border border-gray-200 dark:border-gold-500/20">
+              <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Annual rate (%)</label>
+              <div className="mt-2"><NumInput value={mortgage.annualPct} step={0.1} onChange={(v) => updateMortgage('annualPct', v)} /></div>
+              <p className="text-[11px] text-gray-400 normal-case mt-2">Yearly interest rate — usually Euribor plus your bank's spread.</p>
+            </div>
+            <div className="bg-white dark:bg-[#0a0a0a] p-5 rounded-2xl border border-gray-200 dark:border-gold-500/20">
+              <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Monthly payment (€)</label>
+              <div className="mt-2"><NumInput value={mortgage.payment} step={50} onChange={(v) => updateMortgage('payment', v)} /></div>
+              <p className="text-[11px] text-gray-400 normal-case mt-2">Your monthly instalment (prestação).</p>
+            </div>
+          </div>
+
+          {mortgage.balance > 0 && (
+            <>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                <Card
+                  label="Scheduled payoff"
+                  accent
+                  value={
+                    mort.neverPayoff ? 'Never (payment ≤ interest)'
+                      : mort.payoffMonth > 0 ? `${monthLabel(mort.payoffMonth)} · ${(mort.payoffMonth / 12).toFixed(1)}y`
+                      : `> ${years}y (raise horizon)`
+                  }
+                />
+                <Card
+                  label="Could clear with investments"
+                  value={
+                    mort.crossoverMonth >= 0 ? `${monthLabel(mort.crossoverMonth)} · ${(mort.crossoverMonth / 12).toFixed(1)}y`
+                      : `> ${years}y`
+                  }
+                />
+                <Card
+                  label="Total interest (to payoff)"
+                  value={mort.payoffMonth > 0 ? fmt(mort.totalInterest) : '—'}
+                />
+              </div>
+
+              <div className="bg-white dark:bg-[#0a0a0a] p-6 rounded-2xl border border-gray-200 dark:border-gold-500/20 shadow-sm mb-6">
+                <div className="flex items-center gap-4 mb-4 text-xs">
+                  <span className="flex items-center gap-1.5 text-gray-600 dark:text-gray-400"><span className="inline-block w-2.5 h-2.5 rounded-full" style={{ backgroundColor: '#10b981' }} />Investments (net)</span>
+                  <span className="flex items-center gap-1.5 text-gray-600 dark:text-gray-400"><span className="inline-block w-2.5 h-2.5 rounded-full" style={{ backgroundColor: '#ef4444' }} />Mortgage balance</span>
+                </div>
+                <ResponsiveContainer width="100%" height={280}>
+                  <LineChart data={mort.combined} margin={{ top: 4, right: 8, left: 8, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(212,175,55,0.1)" />
+                    <XAxis dataKey="label" tick={{ fontSize: 11, fill: '#6b7280' }} tickLine={false} axisLine={false} interval={11} />
+                    <YAxis tick={{ fontSize: 11, fill: '#6b7280' }} tickLine={false} axisLine={false} width={70} tickFormatter={(v) => `€${(v / 1000).toFixed(0)}k`} />
+                    <Tooltip content={<ForecastTooltip fmt={fmt} />} />
+                    <Line type="monotone" dataKey="net" name="Investments (net)" stroke="#10b981" strokeWidth={2} dot={false} />
+                    <Line type="monotone" dataKey="mortgage" name="Mortgage balance" stroke="#ef4444" strokeWidth={2} dot={false} />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            </>
+          )}
+
+          <p className="text-xs text-gray-400 dark:text-gray-500 mt-4 leading-relaxed max-w-3xl">
+            A few things to keep in mind: these are estimates, not promises. Growth is added month
+            by month, with your monthly buys counted at each month's end. The big chart shows value
+            <em> before</em> tax (you haven't sold yet); the "net" figures subtract Portuguese tax
+            you'd pay when you cash out — roughly 28% on shares and crypto, about 8% on a PPR held
+            5+ years, 28% on Aforro interest, and nothing extra on Revolut (already taxed). The
+            return rates are guesses you can change, and real markets can go down as well as up.
+            This isn't tax or investment advice.
           </p>
         </>
       )}
@@ -250,7 +499,9 @@ function ForecastTooltip({ active, payload, label, fmt }: any) {
   return (
     <div className="bg-white dark:bg-[#111] border border-gray-200 dark:border-gold-500/30 rounded-xl shadow-lg p-4 text-xs min-w-[200px]">
       <p className="font-bold text-gray-900 dark:text-white mb-2">{label}</p>
-      <p className="text-gray-500 dark:text-gray-400 mb-2">Total <span className="font-semibold text-indigo-600 dark:text-gold-400">{fmt(total)}</span></p>
+      {total > 0 && (
+        <p className="text-gray-500 dark:text-gray-400 mb-2">Total <span className="font-semibold text-indigo-600 dark:text-gold-400">{fmt(total)}</span></p>
+      )}
       {rows.map((p: any) => (
         <div key={p.dataKey} className="flex justify-between gap-4 text-gray-700 dark:text-gray-300">
           <span className="flex items-center gap-1.5">

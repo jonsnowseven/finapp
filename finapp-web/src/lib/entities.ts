@@ -53,6 +53,17 @@ export const DEFAULT_GAINS_TAX: Record<string, number> = {
 };
 export const defaultTax = (entity: string) => DEFAULT_GAINS_TAX[entity] ?? 28;
 
+// Default recurring monthly contribution (€) per entity, used to prefill the forecast.
+// Editable in the UI; falls back to history-detected amount for unlisted entities.
+export const DEFAULT_MONTHLY_BUY: Record<string, number> = {
+  'Aforro':         50,
+  'Banco Invest':   100,
+  'DeGiro':         0,
+  'Kraken':         0,
+  'Revolut':        200,
+  'Trade Republic': 850,
+};
+
 // Maps the asset_name stored by the Kraken importer to a Yahoo Finance EUR symbol,
 // used to value live crypto holdings. Keys match Kraken importer's ASSET_MAP names.
 export const CRYPTO_EUR_SYMBOL: Record<string, string> = {
