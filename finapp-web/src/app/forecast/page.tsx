@@ -273,6 +273,31 @@ export default function ForecastPage() {
   const endNet = rows.reduce((a, r) => a + netAt(r, years * 12), 0);   // after PT tax
   const growthNet = endNet - contributed;
 
+  // Sortable table. Default = horizon-net column (20y, or the custom year), descending.
+  const [sortKey, setSortKey] = useState<string | null>(null);
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
+  const horizonKey = years !== 20 ? 'netN' : 'net20';
+  const activeKey = sortKey ?? horizonKey;
+  const ACC: Record<string, (r: Assumption) => number> = {
+    start: (r) => r.start,
+    monthly: (r) => r.monthly,
+    annualPct: (r) => r.annualPct,
+    terPct: (r) => r.terPct,
+    taxPct: (r) => r.taxPct,
+    net20: (r) => netAt(r, 240),
+    netN: (r) => netAt(r, years * 12),
+  };
+  const sortedRows = useMemo(() => {
+    const f = ACC[activeKey] ?? ACC.net20;
+    return [...rows].sort((a, b) => (sortDir === 'desc' ? f(b) - f(a) : f(a) - f(b)));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rows, activeKey, sortDir, years]);
+  function sortBy(key: string) {
+    if (activeKey === key) setSortDir((d) => (d === 'desc' ? 'asc' : 'desc'));
+    else { setSortKey(key); setSortDir('desc'); }
+  }
+  const arrow = (key: string) => (activeKey === key ? (sortDir === 'desc' ? ' ▼' : ' ▲') : '');
+
   return (
     <main className="max-w-7xl mx-auto p-6 md:p-8">
       <div className="mb-8">
@@ -356,17 +381,17 @@ export default function ForecastPage() {
               <thead>
                 <tr className="bg-gray-50 dark:bg-[#111] border-b border-gray-200 dark:border-gold-500/20 text-xs font-bold text-gray-400 dark:text-gold-500 uppercase tracking-wider">
                   <th className="p-4">Institution</th>
-                  <th className="p-4 text-right" title="What this holding is worth today. Pre-filled from your latest valuation or amount invested — editable.">Start value (€)</th>
-                  <th className="p-4 text-right" title="Your typical monthly contribution here — editable.">Monthly buy (€)</th>
-                  <th className="p-4 text-right" title="Assumed yearly growth rate for this holding, before fees.">Annual return (%)</th>
-                  <th className="p-4 text-right" title="Fund's yearly fee (Total Expense Ratio), subtracted from the return. 0 for direct stocks, savings and crypto.">Fees / TER (%)</th>
-                  <th className="p-4 text-right" title="Portuguese tax paid on the profit when you cash out (gains only, not the money you put in).">Tax on gains (%)</th>
-                  <th className="p-4 text-right" title="Projected value after 20 years, after tax.">20y net</th>
-                  {years !== 20 && <th className="p-4 text-right" title={`Projected value after ${years} years, after tax.`}>{years}y net</th>}
+                  <th className="p-4 text-right cursor-pointer select-none" onClick={() => sortBy('start')} title="What this holding is worth today. Pre-filled from your latest valuation or amount invested — editable. Click to sort.">Start value (€){arrow('start')}</th>
+                  <th className="p-4 text-right cursor-pointer select-none" onClick={() => sortBy('monthly')} title="Your typical monthly contribution here — editable. Click to sort.">Monthly buy (€){arrow('monthly')}</th>
+                  <th className="p-4 text-right cursor-pointer select-none" onClick={() => sortBy('annualPct')} title="Assumed yearly growth rate for this holding, before fees. Click to sort.">Annual return (%){arrow('annualPct')}</th>
+                  <th className="p-4 text-right cursor-pointer select-none" onClick={() => sortBy('terPct')} title="Fund's yearly fee (Total Expense Ratio), subtracted from the return. 0 for direct stocks, savings and crypto. Click to sort.">Fees / TER (%){arrow('terPct')}</th>
+                  <th className="p-4 text-right cursor-pointer select-none" onClick={() => sortBy('taxPct')} title="Portuguese tax paid on the profit when you cash out (gains only, not the money you put in). Click to sort.">Tax on gains (%){arrow('taxPct')}</th>
+                  <th className="p-4 text-right cursor-pointer select-none" onClick={() => sortBy('net20')} title="Projected value after 20 years, after tax. Click to sort.">20y net{arrow('net20')}</th>
+                  {years !== 20 && <th className="p-4 text-right cursor-pointer select-none" onClick={() => sortBy('netN')} title={`Projected value after ${years} years, after tax. Click to sort.`}>{years}y net{arrow('netN')}</th>}
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100 dark:divide-gray-800/50">
-                {rows.map((r) => (
+                {sortedRows.map((r) => (
                   <tr key={r.entity}>
                     <td className="p-4">
                       <span className="flex items-center gap-2 font-semibold text-gray-700 dark:text-gray-300">
