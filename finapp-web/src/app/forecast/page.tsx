@@ -35,6 +35,16 @@ function netAt(r: Assumption, months: number): number {
 }
 
 const MONTHS_BACK = 12; // window for detecting recurring contributions
+const PT_RETIREMENT_AGE = 66 + 7 / 12; // Portugal legal retirement age 2026: 66y 7m
+const PROFILE_KEY = 'finapp_profile';
+
+// Age in years from an ISO birth date (YYYY-MM-DD); null if invalid.
+function ageFrom(birthDate: string): number | null {
+  if (!birthDate) return null;
+  const t = new Date(birthDate).getTime();
+  if (isNaN(t)) return null;
+  return (Date.now() - t) / (365.25 * 24 * 3600 * 1000);
+}
 
 interface Mortgage {
   balance: number;    // outstanding principal (€)
@@ -89,6 +99,30 @@ export default function ForecastPage() {
       return next;
     });
   }
+
+  const [birthDate, setBirthDate] = useState('');
+  useEffect(() => {
+    const s = localStorage.getItem(PROFILE_KEY);
+    if (s) {
+      try {
+        const { birthDate: bd } = JSON.parse(s);
+        if (bd) {
+          setBirthDate(bd);
+          const age = ageFrom(bd);
+          if (age != null) setYears(Math.min(40, Math.max(1, Math.round(PT_RETIREMENT_AGE - age))));
+        }
+      } catch { /* ignore */ }
+    }
+  }, []);
+  function updateBirthDate(bd: string) {
+    setBirthDate(bd);
+    localStorage.setItem(PROFILE_KEY, JSON.stringify({ birthDate: bd }));
+    const age = ageFrom(bd);
+    if (age != null) setYears(Math.min(40, Math.max(1, Math.round(PT_RETIREMENT_AGE - age))));
+  }
+
+  const age = ageFrom(birthDate);
+  const yearsToRet = age != null ? Math.round(PT_RETIREMENT_AGE - age) : null;
 
   const load = useCallback(async () => {
     const { data: txs } = await supabase.from('transactions').select('*');
@@ -270,6 +304,23 @@ export default function ForecastPage() {
                 className="w-full mt-2 accent-indigo-600 dark:accent-gold-500"
               />
               <p className="text-2xl font-bold dark:text-white">{years}y</p>
+
+              <div className="mt-3 pt-3 border-t border-gray-100 dark:border-gray-800/60">
+                <label className="text-[11px] text-gray-400 normal-case">Birth date (sets default horizon)</label>
+                <input
+                  type="date" value={birthDate}
+                  onChange={(e) => updateBirthDate(e.target.value)}
+                  className="w-full mt-1 bg-gray-50 dark:bg-[#111] border border-gray-300 dark:border-gold-500/30 rounded-lg px-2 py-1 text-sm text-gray-900 dark:text-white outline-none focus:border-indigo-500 dark:focus:border-gold-500"
+                />
+                {age != null && (
+                  <p
+                    className="text-[11px] text-gray-400 normal-case mt-1 cursor-help"
+                    title={`Born ${birthDate} · age ${age.toFixed(1)} today · Portugal retirement age 66y7m → ${yearsToRet} years to retirement (capped at 40 on the slider).`}
+                  >
+                    Age {Math.floor(age)} · {yearsToRet}y to PT retirement (66y7m) ⓘ
+                  </p>
+                )}
+              </div>
             </div>
           </div>
 
