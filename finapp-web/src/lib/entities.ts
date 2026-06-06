@@ -53,6 +53,20 @@ export const DEFAULT_GAINS_TAX: Record<string, number> = {
 };
 export const defaultTax = (entity: string) => DEFAULT_GAINS_TAX[entity] ?? 28;
 
+// Default TER (Total Expense Ratio, % per year) per entity — the fund's annual fee,
+// subtracted from the assumed return. Editable in the UI.
+//  - Funds/PPRs carry a TER; direct stocks, savings accounts and crypto don't.
+export const DEFAULT_TER: Record<string, number> = {
+  'Aforro':         0,
+  'Revolut':        0,
+  'Kraken':         0,
+  'Trade Republic': 0.2,  // ETFs
+  'DeGiro':         0.2,  // ETFs (direct stocks: set to 0)
+  'Banco Invest':   1.5,  // managed PPR
+  'SGF':            1.5,  // managed PPR
+};
+export const defaultTer = (entity: string) => DEFAULT_TER[entity] ?? 0.2;
+
 // Default recurring monthly contribution (€) per entity, used to prefill the forecast.
 // Editable in the UI; falls back to history-detected amount for unlisted entities.
 export const DEFAULT_MONTHLY_BUY: Record<string, number> = {

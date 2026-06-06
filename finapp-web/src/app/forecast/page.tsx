@@ -4,20 +4,25 @@ import {
   AreaChart, Area, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from 'recharts';
 import { supabase } from '../../lib/supabase';
-import { entityHex, typeSign, defaultReturn, defaultTax, DEFAULT_MONTHLY_BUY } from '../../lib/entities';
+import { entityHex, typeSign, defaultReturn, defaultTax, defaultTer, DEFAULT_MONTHLY_BUY } from '../../lib/entities';
 
 interface Assumption {
   entity: string;
   start: number;        // current value (€)
   monthly: number;      // recurring monthly contribution (€)
   annualPct: number;    // assumed annual return (%)
+  terPct: number;       // fund fee / TER (% per year) — subtracted from return
   taxPct: number;       // PT tax (%) on gains at withdrawal
 }
 
-// Project one entity's gross value forward `months` (monthly compounding).
+// Net-of-fees annual return: assumed return minus the fund's TER.
+const netReturn = (r: Assumption) => r.annualPct - r.terPct;
+
+// Project one entity's gross value forward `months` (monthly compounding, after fees).
 function projectGross(r: Assumption, months: number): number {
   let v = r.start;
-  for (let m = 0; m < months; m++) v = v * (1 + r.annualPct / 100 / 12) + r.monthly;
+  const rate = netReturn(r) / 100 / 12;
+  for (let m = 0; m < months; m++) v = v * (1 + rate) + r.monthly;
   return v;
 }
 
@@ -118,6 +123,7 @@ export default function ForecastPage() {
       start: Math.round((valByEntity[e] ?? net[e] ?? 0) * 100) / 100,
       monthly: DEFAULT_MONTHLY_BUY[e] ?? Math.round(((recent[e] ?? 0) / MONTHS_BACK) * 100) / 100,
       annualPct: defaultReturn(e),
+      terPct: defaultTer(e),
       taxPct: defaultTax(e),
     })));
     setLoading(false);
@@ -152,7 +158,7 @@ export default function ForecastPage() {
       series.push(point);
       // advance one month
       for (const r of rows) {
-        cur[r.entity] = cur[r.entity] * (1 + r.annualPct / 100 / 12) + r.monthly;
+        cur[r.entity] = cur[r.entity] * (1 + netReturn(r) / 100 / 12) + r.monthly;
       }
     }
     return { series, entities: ents };
@@ -201,7 +207,7 @@ export default function ForecastPage() {
     // Portfolio-value-weighted blended return for the coast phase
     const totalStart = rows.reduce((a, r) => a + r.start, 0);
     const blended = totalStart > 0
-      ? rows.reduce((a, r) => a + r.start * r.annualPct, 0) / totalStart
+      ? rows.reduce((a, r) => a + r.start * netReturn(r), 0) / totalStart
       : 7;
 
     let fiMonth = -1;
@@ -301,7 +307,8 @@ export default function ForecastPage() {
                   <th className="p-4">Institution</th>
                   <th className="p-4 text-right" title="What this holding is worth today. Pre-filled from your latest valuation or amount invested — editable.">Start value (€)</th>
                   <th className="p-4 text-right" title="Your typical monthly contribution here — editable.">Monthly buy (€)</th>
-                  <th className="p-4 text-right" title="Assumed yearly growth rate for this holding.">Annual return (%)</th>
+                  <th className="p-4 text-right" title="Assumed yearly growth rate for this holding, before fees.">Annual return (%)</th>
+                  <th className="p-4 text-right" title="Fund's yearly fee (Total Expense Ratio), subtracted from the return. 0 for direct stocks, savings and crypto.">Fees / TER (%)</th>
                   <th className="p-4 text-right" title="Portuguese tax paid on the profit when you cash out (gains only, not the money you put in).">Tax on gains (%)</th>
                   <th className="p-4 text-right" title="Projected value after 20 years, after tax.">20y net</th>
                   {years !== 20 && <th className="p-4 text-right" title={`Projected value after ${years} years, after tax.`}>{years}y net</th>}
@@ -319,6 +326,7 @@ export default function ForecastPage() {
                     <td className="p-4 text-right"><NumInput value={r.start} onChange={(v) => update(r.entity, 'start', v)} /></td>
                     <td className="p-4 text-right"><NumInput value={r.monthly} onChange={(v) => update(r.entity, 'monthly', v)} /></td>
                     <td className="p-4 text-right"><NumInput value={r.annualPct} step={0.1} onChange={(v) => update(r.entity, 'annualPct', v)} /></td>
+                    <td className="p-4 text-right"><NumInput value={r.terPct} step={0.05} onChange={(v) => update(r.entity, 'terPct', v)} /></td>
                     <td className="p-4 text-right"><NumInput value={r.taxPct} step={0.5} onChange={(v) => update(r.entity, 'taxPct', v)} /></td>
                     <td className="p-4 text-right font-bold dark:text-white">{fmt(netAt(r, 240))}</td>
                     {years !== 20 && <td className="p-4 text-right font-bold dark:text-white">{fmt(netAt(r, years * 12))}</td>}
