@@ -10,8 +10,8 @@ const ALLOWED_EMAILS = (process.env.ALLOWED_EMAILS ?? '')
 
 function isAllowed(email: string | undefined): boolean {
   if (!email) return false;
-  if (ALLOWED_EMAILS.length === 0) return true; // no restriction configured = allow all
-  return ALLOWED_EMAILS.includes(email.toLowerCase());
+  // Fail CLOSED: an empty allowlist denies everyone. Set ALLOWED_EMAILS in every env.
+  return ALLOWED_EMAILS.length > 0 && ALLOWED_EMAILS.includes(email.toLowerCase());
 }
 
 export async function middleware(request: NextRequest) {
@@ -39,18 +39,23 @@ export async function middleware(request: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser();
 
   const { pathname } = request.nextUrl;
+  const isApi = pathname.startsWith('/api');
   const isPublicPath =
     pathname.startsWith('/login') ||
     pathname.startsWith('/auth') ||
     pathname.startsWith('/unauthorized');
 
   if (!user && !isPublicPath) {
+    // API → JSON 401; pages → redirect to login
+    if (isApi) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     const loginUrl = request.nextUrl.clone();
     loginUrl.pathname = '/login';
     return NextResponse.redirect(loginUrl);
   }
 
   if (user && !isAllowed(user.email) && !isPublicPath) {
+    // API → JSON 403 (no sign-out); pages → sign out and show the unauthorized page
+    if (isApi) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     await supabase.auth.signOut();
     const url = request.nextUrl.clone();
     url.pathname = '/unauthorized';
