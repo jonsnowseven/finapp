@@ -300,8 +300,8 @@ export default function ForecastPage() {
           </div>
 
           {/* Assumptions table */}
-          <div className="bg-white dark:bg-[#0a0a0a] rounded-2xl border border-gray-200 dark:border-gold-500/20 overflow-hidden">
-            <table className="w-full text-left text-sm">
+          <div className="bg-white dark:bg-[#0a0a0a] rounded-2xl border border-gray-200 dark:border-gold-500/20 overflow-x-auto">
+            <table className="w-full text-left text-sm min-w-[640px]">
               <thead>
                 <tr className="bg-gray-50 dark:bg-[#111] border-b border-gray-200 dark:border-gold-500/20 text-xs font-bold text-gray-400 dark:text-gold-500 uppercase tracking-wider">
                   <th className="p-4">Institution</th>
