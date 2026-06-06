@@ -1,9 +1,12 @@
+import { requireApiUser } from "../../../lib/api-auth";
 import { NextRequest, NextResponse } from 'next/server';
 import { valuateIsins } from '../../../lib/marketdata';
 
 // GET /api/valuate?isins=US0378331005,NL0000235190[&fresh=1]
 // Resolves each ISIN to a Yahoo ticker, quotes it, converts price to EUR.
 export async function GET(request: NextRequest) {
+  const guard = await requireApiUser();
+  if (guard) return guard;
   const { searchParams } = new URL(request.url);
   const isins = (searchParams.get('isins') ?? '')
     .split(',')

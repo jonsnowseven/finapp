@@ -1,7 +1,10 @@
+import { requireApiUser } from "../../../lib/api-auth";
 import { NextRequest, NextResponse } from 'next/server';
 import { fetchMultipleQuotes } from '../../../lib/marketdata';
 
 export async function GET(request: NextRequest) {
+  const guard = await requireApiUser();
+  if (guard) return guard;
   const { searchParams } = new URL(request.url);
   const symbolsParam = searchParams.get('symbols') ?? '';
   const symbols = symbolsParam

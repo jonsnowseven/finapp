@@ -1,9 +1,12 @@
+import { requireApiUser } from "../../../../lib/api-auth";
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 
 // Dev-only: deletes all transactions (and valuations) for one entity.
 // Use when re-importing a source whose dedup-key format changed.
 export async function POST(request: Request) {
+  const guard = await requireApiUser();
+  if (guard) return guard;
   if (process.env.NODE_ENV === 'production') {
     return NextResponse.json({ error: 'Disabled in production.' }, { status: 403 });
   }

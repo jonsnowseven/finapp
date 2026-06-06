@@ -1,3 +1,4 @@
+import { requireApiUser } from "../../../../lib/api-auth";
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 
@@ -84,6 +85,8 @@ function parseSgfValuation(text: string): { as_of_date: string; value: number; u
 }
 
 export async function POST(request: Request) {
+  const guard = await requireApiUser();
+  if (guard) return guard;
   try {
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     const pdfParse: (buf: Buffer) => Promise<{ text: string }> = require('pdf-parse');

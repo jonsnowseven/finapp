@@ -1,8 +1,11 @@
+import { requireApiUser } from "../../../lib/api-auth";
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { fetchKrakenTransactions } from '../../../lib/kraken';
 
 export async function POST() {
+  const guard = await requireApiUser();
+  if (guard) return guard;
   try {
     const supabase = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,

@@ -1,3 +1,4 @@
+import { requireApiUser } from "../../../../lib/api-auth";
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 
@@ -5,6 +6,8 @@ import { createClient } from '@supabase/supabase-js';
 // Equivalent to re-running database/schema.sql against an already-correct schema
 // (PostgREST can't run DDL, so we empty the table instead of DROP/CREATE).
 export async function POST() {
+  const guard = await requireApiUser();
+  if (guard) return guard;
   // Hard guard — never run outside local development
   if (process.env.NODE_ENV === 'production') {
     return NextResponse.json({ error: 'Disabled in production.' }, { status: 403 });

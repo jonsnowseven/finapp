@@ -1,3 +1,4 @@
+import { requireApiUser } from "../../../../lib/api-auth";
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 
@@ -46,6 +47,8 @@ function mapType(raw: string): string {
 }
 
 export async function POST(request: Request) {
+  const guard = await requireApiUser();
+  if (guard) return guard;
   try {
     const formData = await request.formData();
     const file = formData.get('file') as File | null;

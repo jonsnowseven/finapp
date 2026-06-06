@@ -1,6 +1,9 @@
+import { requireApiUser } from "../../../lib/api-auth";
 import { NextResponse } from 'next/server';
 
 export async function POST(request: Request) {
+  const guard = await requireApiUser();
+  if (guard) return guard;
   const { origin } = new URL(request.url);
   const results: Record<string, any> = {};
 
