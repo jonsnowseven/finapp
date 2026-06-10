@@ -279,6 +279,7 @@ export default function TransactionsPage() {
                   <th className="p-4">Date</th>
                   <th className="p-4">Institution</th>
                   <th className="p-4">Asset</th>
+                  <th className="p-4">ISIN</th>
                   <th className="p-4">Type</th>
                   <th className="p-4 text-right">Amount</th>
                 </tr>
@@ -286,7 +287,7 @@ export default function TransactionsPage() {
               <tbody className="divide-y divide-gray-100 dark:divide-gray-800/50 text-sm">
                 {filteredTransactions.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="p-8 text-center text-gray-400 dark:text-gray-500">No transactions match your filtering constraints.</td>
+                    <td colSpan={6} className="p-8 text-center text-gray-400 dark:text-gray-500">No transactions match your filtering constraints.</td>
                   </tr>
                 ) : (
                   filteredTransactions.map((tx) => (
@@ -299,6 +300,7 @@ export default function TransactionsPage() {
                         </span>
                       </td>
                       <td className="p-4 font-semibold text-gray-900 dark:text-white">{tx.asset_name}</td>
+                      <td className="p-4 font-mono text-xs text-gray-500 dark:text-gray-400">{tx.isin ?? '—'}</td>
                       <td className="p-4 capitalize text-gray-500 dark:text-gray-400">{tx.transaction_type}</td>
                       <td className="p-4 text-right font-bold text-gray-900 dark:text-white">€{Number(tx.amount).toFixed(2)}</td>
                     </tr>

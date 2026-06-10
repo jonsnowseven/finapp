@@ -7,8 +7,9 @@ create table transactions (
   created_at timestamp with time zone default timezone('utc'::text, now()) not null,
   date date not null,
   entity text not null, -- NEW FIELD: e.g., 'Degiro', 'AforroNet', 'SGF'
-  asset_name text not null, 
-  transaction_type text not null, 
+  asset_name text not null,
+  isin text, -- security identifier when available (DeGiro, Trade Republic)
+  transaction_type text not null,
   quantity numeric, 
   price numeric, 
   amount numeric not null, 

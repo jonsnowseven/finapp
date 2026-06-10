@@ -79,6 +79,7 @@ function parseDeGiroPdf(text: string) {
       date,
       entity: 'DeGiro',
       asset_name: product || isin,
+      isin,
       transaction_type: txType,
       quantity: qty !== 0 ? Math.abs(qty) : null,
       price: price || null,

@@ -76,6 +76,7 @@ export async function POST(request: Request) {
         date:             r.date,
         entity:           'Trade Republic',
         asset_name:       r.name || r.symbol,
+        isin:             r.symbol || null,   // TR CSV "symbol" column holds the ISIN
         transaction_type: mapType(r.type),
         quantity:         qty || null,
         price:            price || null,
