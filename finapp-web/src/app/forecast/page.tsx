@@ -101,25 +101,34 @@ export default function ForecastPage() {
   }
 
   const [birthDate, setBirthDate] = useState('');
+  const [netSalary, setNetSalary] = useState(0);
+  const [salaryPeriod, setSalaryPeriod] = useState<'month' | 'year'>('month');
   useEffect(() => {
     const s = localStorage.getItem(PROFILE_KEY);
     if (s) {
       try {
-        const { birthDate: bd } = JSON.parse(s);
-        if (bd) {
-          setBirthDate(bd);
-          const age = ageFrom(bd);
+        const p = JSON.parse(s);
+        if (p.birthDate) {
+          setBirthDate(p.birthDate);
+          const age = ageFrom(p.birthDate);
           if (age != null) setYears(Math.min(40, Math.max(1, Math.round(PT_RETIREMENT_AGE - age))));
         }
+        if (typeof p.netSalary === 'number') setNetSalary(p.netSalary);
+        if (p.salaryPeriod === 'month' || p.salaryPeriod === 'year') setSalaryPeriod(p.salaryPeriod);
       } catch { /* ignore */ }
     }
   }, []);
+  function persistProfile(next: { birthDate: string; netSalary: number; salaryPeriod: 'month' | 'year' }) {
+    localStorage.setItem(PROFILE_KEY, JSON.stringify(next));
+  }
   function updateBirthDate(bd: string) {
     setBirthDate(bd);
-    localStorage.setItem(PROFILE_KEY, JSON.stringify({ birthDate: bd }));
+    persistProfile({ birthDate: bd, netSalary, salaryPeriod });
     const age = ageFrom(bd);
     if (age != null) setYears(Math.min(40, Math.max(1, Math.round(PT_RETIREMENT_AGE - age))));
   }
+  function updateSalary(v: number) { setNetSalary(v); persistProfile({ birthDate, netSalary: v, salaryPeriod }); }
+  function updateSalaryPeriod(p: 'month' | 'year') { setSalaryPeriod(p); persistProfile({ birthDate, netSalary, salaryPeriod: p }); }
 
   const age = ageFrom(birthDate);
   const yearsToRet = age != null ? Math.round(PT_RETIREMENT_AGE - age) : null;
@@ -374,6 +383,44 @@ export default function ForecastPage() {
               </AreaChart>
             </ResponsiveContainer>
           </div>
+
+          {/* Savings rate */}
+          {(() => {
+            const monthlyNet = salaryPeriod === 'year' ? netSalary / 12 : netSalary;
+            const rate = monthlyNet > 0 ? (monthlyTotal / monthlyNet) * 100 : null;
+            // Savings-rate benchmarks: 20% "pay yourself first" rule; 50%+ = FIRE pace.
+            const tier =
+              rate == null ? { cls: 'text-indigo-600 dark:text-gold-400', label: '' }
+              : rate < 10  ? { cls: 'text-red-500 dark:text-red-400',       label: 'low' }
+              : rate < 20  ? { cls: 'text-amber-500 dark:text-amber-400',   label: 'fair' }
+              : rate < 30  ? { cls: 'text-green-600 dark:text-green-400',   label: 'on track (20% rule)' }
+              : rate < 50  ? { cls: 'text-emerald-600 dark:text-emerald-400', label: 'great' }
+              :              { cls: 'text-teal-500 dark:text-teal-300',     label: 'FIRE pace' };
+            return (
+              <div className="bg-white dark:bg-[#0a0a0a] p-4 rounded-2xl border border-gray-200 dark:border-gold-500/20 mb-4 flex flex-wrap items-center gap-x-6 gap-y-3">
+                <div className="flex items-center gap-2">
+                  <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Net salary (€)</label>
+                  <NumInput value={netSalary} step={50} onChange={updateSalary} />
+                  <button
+                    onClick={() => updateSalaryPeriod(salaryPeriod === 'month' ? 'year' : 'month')}
+                    className="text-xs px-2 py-1 rounded-md border border-gray-300 dark:border-gold-500/30 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-[#1a1a1a]"
+                  >
+                    / {salaryPeriod}
+                  </button>
+                </div>
+                <div className="text-sm text-gray-600 dark:text-gray-300">
+                  Investing <strong className="dark:text-white">{fmt(monthlyTotal)}/mo</strong>
+                  {rate != null ? (
+                    <> = <strong className={tier.cls}>{rate.toFixed(1)}%</strong> of net salary
+                      <span className={`ml-2 text-xs font-medium ${tier.cls}`}>· {tier.label}</span>
+                    </>
+                  ) : (
+                    <span className="text-gray-400"> — enter your net salary to see the %</span>
+                  )}
+                </div>
+              </div>
+            );
+          })()}
 
           {/* Assumptions table */}
           <div className="bg-white dark:bg-[#0a0a0a] rounded-2xl border border-gray-200 dark:border-gold-500/20 overflow-x-auto">
