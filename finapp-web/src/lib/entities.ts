@@ -8,6 +8,7 @@ export const ENTITY_HEX: Record<string, string> = {
   'SGF':            '#f59e0b', // amber
   'Revolut':        '#6366f1', // indigo
   'Aforro':         '#f43f5e', // rose
+  'Lego':           '#e3000b', // LEGO red
 };
 export const FALLBACK_HEX = '#D4AF37'; // gold
 export const entityHex = (e: string) => ENTITY_HEX[e] ?? FALLBACK_HEX;

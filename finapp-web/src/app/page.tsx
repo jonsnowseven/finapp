@@ -263,6 +263,26 @@ export default function HomePage() {
         }
       }
 
+      // LEGO investments (separate table): current value as valuation, paid as invested.
+      const { data: lego } = await supabase.from('lego_sets').select('paid, value');
+      if (lego && lego.length) {
+        const paid = lego.reduce((a, r) => a + Number(r.paid ?? 0), 0);
+        const value = lego.reduce((a, r) => a + Number(r.value ?? 0), 0);
+        if (value > 0) {
+          byEntity['Lego'] = {
+            entity: 'Lego',
+            balance: paid,
+            count: lego.length,
+            valuation: value,
+            valuationDate: 'BrickEconomy',
+            info:
+              `LEGO sets at current market value (from the last import).\n\n` +
+              `${lego.length} set${lego.length !== 1 ? 's' : ''} · paid ${fmt(paid)} · value ${fmt(value)}.\n\n` +
+              `Managed in the Lego tab.`,
+          };
+        }
+      }
+
       // Card display value = valuation when present, else net invested
       const displayVal = (b: EntityBalance) => b.valuation ?? b.balance;
       const balances = Object.values(byEntity).sort((a, b) => displayVal(b) - displayVal(a));

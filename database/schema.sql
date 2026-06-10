@@ -50,6 +50,31 @@ create table if not exists valuations (
   CONSTRAINT valuations_entity_date_key UNIQUE (entity, as_of_date)
 );
 
+-- LEGO investments (sets held for appreciation). One row per set number.
+create table if not exists lego_sets (
+  id uuid default gen_random_uuid() primary key,
+  created_at timestamp with time zone default timezone('utc'::text, now()) not null,
+  set_no text not null,
+  name text not null,
+  theme text,
+  retail numeric,
+  paid numeric,
+  value numeric,
+  qty_new integer default 0,
+  qty_used integer default 0,
+  growth_pct numeric,
+  annual_pct numeric,            -- forecast appreciation override (null → theme default)
+  source_document text,
+  constraint lego_sets_set_no_key unique (set_no)
+);
+alter table lego_sets enable row level security;
+drop policy if exists "authenticated read lego_sets" on public.lego_sets;
+create policy "authenticated read lego_sets"
+  on public.lego_sets for select to authenticated using (true);
+revoke all on public.lego_sets from anon;
+grant select on public.lego_sets to authenticated;
+grant all on public.lego_sets to service_role;
+
 alter table valuations enable row level security;
 drop policy if exists "authenticated read valuations" on public.valuations;
 create policy "authenticated read valuations"
