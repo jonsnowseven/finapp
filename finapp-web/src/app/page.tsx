@@ -1,7 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
-import { entityHex, typeSign, cryptoSymbol, TR_EUR_SYMBOL } from '../lib/entities';
+import { entityHex, typeSign, cryptoSymbol, TR_EUR_SYMBOL, defaultReturn, defaultTer, defaultTax, DEFAULT_MONTHLY_BUY } from '../lib/entities';
 import { RefreshCw } from 'lucide-react';
 
 interface EntityBalance {
@@ -24,6 +24,75 @@ export default function HomePage() {
 
   const fmt = (n: number) =>
     `€${n.toLocaleString('pt-PT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
+  const [report, setReport] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
+
+  // PII-free Markdown summary (institutions + product themes only; no names,
+  // accounts, IBANs or emails) to paste into an AI assistant. Goals come from the
+  // Forecast page's locally-saved inputs; the AI can do the projections itself.
+  function buildReport(): string {
+    const read = (k: string) => { try { return JSON.parse(localStorage.getItem(k) || '{}'); } catch { return {}; } };
+    const profile = read('finapp_profile'), fireP = read('finapp_fire'), mort = read('finapp_mortgage');
+
+    const monthlyNet = profile.salaryPeriod === 'year' ? (profile.netSalary || 0) / 12 : (profile.netSalary || 0);
+    const monthlyInvested = entityBalances.reduce((a, b) => a + (DEFAULT_MONTHLY_BUY[b.entity] ?? 0), 0);
+    const rate = monthlyNet > 0 ? (monthlyInvested / monthlyNet) * 100 : null;
+    const age = profile.birthDate ? Math.floor((Date.now() - new Date(profile.birthDate).getTime()) / (365.25 * 864e5)) : null;
+    const totalInvested = entityBalances.reduce((a, b) => a + b.balance, 0);
+
+    const L: string[] = [];
+    L.push('# Investment Portfolio Summary');
+    L.push(`_Generated ${new Date().toISOString().slice(0, 10)} · figures in EUR · no personal identifiers._`);
+    L.push('', '## Profile');
+    if (age != null && !isNaN(age)) L.push(`- Age: ~${age}`);
+    if (monthlyNet > 0) L.push(`- Net salary: ${fmt(monthlyNet)}/month`);
+    L.push(`- Monthly invested (recurring): ${fmt(monthlyInvested)}${rate != null ? ` (${rate.toFixed(1)}% of net salary)` : ''}`);
+    L.push('', '## Holdings (current value)');
+    L.push('| Institution | Current value | Invested | Assumed return% | TER% | Tax% |');
+    L.push('|---|--:|--:|--:|--:|--:|');
+    for (const b of entityBalances) {
+      const value = b.valuation ?? b.balance;
+      L.push(`| ${b.entity} | ${fmt(value)} | ${fmt(b.balance)} | ${defaultReturn(b.entity)} | ${defaultTer(b.entity)} | ${defaultTax(b.entity)} |`);
+    }
+    L.push('');
+    L.push(`- Total portfolio value: ${fmt(metrics.totalValue)}`);
+    L.push(`- Total invested (cost basis): ${fmt(totalInvested)}`);
+    L.push(`- Total fees paid: ${fmt(metrics.totalFees)}`);
+    if (fireP.amount > 0) {
+      const annual = fireP.period === 'year' ? fireP.amount : fireP.amount * 12;
+      const swr = (fireP.swr || 4) / 100;
+      L.push('', '## FIRE');
+      L.push(`- Annual expenses: ${fmt(annual)}`);
+      if (swr > 0) L.push(`- FIRE number (${(1 / swr).toFixed(0)}×): ${fmt(annual / swr)}`);
+      L.push(`- Withdrawal rate: ${fireP.swr ?? 4}% · Inflation: ${fireP.inflation ?? 2}% · Retire in: ${fireP.retYears ?? 30}y`);
+    }
+    if (mort.balance > 0) {
+      L.push('', '## Mortgage (Crédito Habitação)');
+      L.push(`- Outstanding: ${fmt(mort.balance)} · Rate: ${mort.annualPct}% · Payment: ${fmt(mort.payment)}/month`);
+    }
+    L.push('', '## Goals', '- Buy / pay off a home; reach financial independence (FIRE).');
+    L.push('', '## Request');
+    L.push('Analyse this portfolio against my income and goals. Give specific, prioritised ' +
+      'recommendations on allocation & diversification, fees (TER) and taxes, the ' +
+      'mortgage-vs-invest trade-off, savings rate, and progress toward the FIRE number. ' +
+      'You may project growth using the assumed returns. Flag risks and quick wins. ' +
+      'This is general information, not regulated advice.');
+    return L.join('\n');
+  }
+
+  function copyReport() {
+    if (!report) return;
+    navigator.clipboard?.writeText(report).then(() => { setCopied(true); setTimeout(() => setCopied(false), 2000); });
+  }
+  function downloadReport() {
+    if (!report) return;
+    const blob = new Blob([report], { type: 'text/markdown' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = 'portfolio-report.md'; a.click();
+    URL.revokeObjectURL(url);
+  }
 
   async function fetchDashboardData(fresh = false) {
     const q = fresh ? '?fresh=1' : '';
@@ -411,6 +480,35 @@ export default function HomePage() {
                 )}
               </div>
             ))}
+          </div>
+
+          {/* Portfolio report for AI */}
+          <div className="mt-8 bg-white dark:bg-[#0a0a0a] p-6 rounded-2xl border border-gray-200 dark:border-gold-500/20">
+            <div className="flex items-center justify-between flex-wrap gap-3">
+              <div>
+                <h3 className="text-lg font-bold">Portfolio report</h3>
+                <p className="text-xs text-gray-400">A PII-free summary (no names, accounts or emails) to paste into any AI assistant for advice.</p>
+              </div>
+              <button
+                onClick={() => { setReport(buildReport()); setCopied(false); }}
+                className="shrink-0 px-4 py-2 rounded-xl bg-indigo-600 dark:bg-gold-500 text-white dark:text-black text-sm font-semibold hover:bg-indigo-700 dark:hover:bg-gold-600 transition-colors"
+              >
+                {report ? 'Regenerate' : 'Generate report'}
+              </button>
+            </div>
+
+            {report && (
+              <>
+                <textarea
+                  readOnly value={report} rows={14}
+                  className="w-full mt-4 font-mono text-xs bg-gray-50 dark:bg-[#111] border border-gray-300 dark:border-gold-500/30 rounded-lg p-3 text-gray-800 dark:text-gray-200 outline-none"
+                />
+                <div className="flex gap-3 mt-3">
+                  <button onClick={copyReport} className="px-3 py-2 rounded-xl border border-gray-300 dark:border-gold-500/30 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-[#1a1a1a]">{copied ? 'Copied ✓' : 'Copy'}</button>
+                  <button onClick={downloadReport} className="px-3 py-2 rounded-xl border border-gray-300 dark:border-gold-500/30 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-[#1a1a1a]">Download .md</button>
+                </div>
+              </>
+            )}
           </div>
         </>
       )}
