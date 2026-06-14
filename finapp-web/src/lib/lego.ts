@@ -34,28 +34,35 @@ export const DEFAULT_LEGO_CAGR = 7;
 // Known themes, longest first so multi-word themes win over their prefixes.
 const THEMES = Object.keys(LEGO_THEME_CAGR).sort((a, b) => b.length - a.length);
 
-// Split a combined "Name Theme" string into { name, theme } by locating the
-// earliest known theme keyword. Falls back to the trailing "A / B" guess.
+// Split a combined "NameTheme" string into { name, theme }.
+// Theme is "<Theme> / <Subtheme>" or a bare "<Theme>". The Theme is a known
+// keyword that sits at the START of the theme — i.e. immediately before the
+// first " / ", or (no subtheme) at the very end of the string. This avoids
+// matching a theme word that appears inside the NAME (e.g. "The Batman …").
 export function splitNameTheme(mid: string): { name: string; theme: string } {
-  let best = -1;
-  let bestKw = '';
-  for (const kw of THEMES) {
-    const i = mid.indexOf(kw);
-    if (i >= 0 && (best === -1 || i < best || (i === best && kw.length > bestKw.length))) {
-      best = i; bestKw = kw;
-    }
-  }
-  if (best > 0) {
-    return { name: mid.slice(0, best).trim(), theme: mid.slice(best).trim() };
-  }
-  // Fallback: split at the word before the first " / "
-  const slash = mid.indexOf('/');
+  mid = mid.trim();
+  const slash = mid.indexOf(' / ');
+
   if (slash > 0) {
-    const left = mid.slice(0, slash).trimEnd();
-    const sp = left.lastIndexOf(' ');
-    if (sp > 0) return { name: left.slice(0, sp).trim(), theme: (left.slice(sp + 1) + mid.slice(slash)).trim() };
+    // Known keyword ending exactly at the slash → start of theme. Prefer longest.
+    let bestKw = '';
+    for (const kw of THEMES) {
+      if (kw.length > bestKw.length && mid.slice(slash - kw.length, slash) === kw) bestKw = kw;
+    }
+    const start = bestKw ? slash - bestKw.length : (() => {
+      // Fallback: theme is the single word before " / "
+      const left = mid.slice(0, slash);
+      const sp = left.lastIndexOf(' ');
+      return sp > 0 ? sp + 1 : 0;
+    })();
+    return { name: mid.slice(0, start).trim(), theme: mid.slice(start).trim() };
   }
-  return { name: mid.trim(), theme: '' };
+
+  // No subtheme: a known theme as the trailing suffix (e.g. "…ShopsHarry Potter")
+  for (const kw of THEMES) {
+    if (mid.endsWith(kw)) return { name: mid.slice(0, mid.length - kw.length).trim(), theme: kw };
+  }
+  return { name: mid, theme: '' };
 }
 
 // Annual appreciation rate for a theme string (matches the first known keyword).
