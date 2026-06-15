@@ -51,6 +51,27 @@ create table if not exists valuations (
   CONSTRAINT valuations_entity_date_key UNIQUE (entity, as_of_date)
 );
 
+-- Portugal Social Security retirement simulation (manually entered from the
+-- official simulator image). One row per scenario.
+create table if not exists pension_sim (
+  id uuid default gen_random_uuid() primary key,
+  created_at timestamp with time zone default timezone('utc'::text, now()) not null,
+  scenario text not null,          -- 'early' | 'personal' | 'legal'
+  title text,                      -- e.g. 'Pensão antecipada'
+  note text,                       -- 'Com penalização' / 'Sem penalização' / 'Com bonificação'
+  retirement_date date,
+  gross numeric,                   -- gross monthly pension (€)
+  access_age text,                 -- e.g. '64 anos e 11 meses'
+  constraint pension_sim_scenario_key unique (scenario)
+);
+alter table pension_sim enable row level security;
+drop policy if exists "authenticated read pension_sim" on public.pension_sim;
+create policy "authenticated read pension_sim"
+  on public.pension_sim for select to authenticated using (true);
+revoke all on public.pension_sim from anon;
+grant select on public.pension_sim to authenticated;
+grant all on public.pension_sim to service_role;
+
 -- LEGO investments (sets held for appreciation). One row per set number.
 create table if not exists lego_sets (
   id uuid default gen_random_uuid() primary key,

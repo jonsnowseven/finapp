@@ -100,9 +100,14 @@ export default function ForecastPage() {
     });
   }
 
+  // State pension scenarios (from the Pension tab) — reduce the FIRE target.
+  const [pensionRows, setPensionRows] = useState<{ scenario: string; gross: number | null; title: string | null }[]>([]);
+  const [pensionUse, setPensionUse] = useState<'none' | 'early' | 'personal' | 'legal'>('none');
+
   const [birthDate, setBirthDate] = useState('');
   const [netSalary, setNetSalary] = useState(0);
   const [salaryPeriod, setSalaryPeriod] = useState<'month' | 'year'>('month');
+  const [pensionTaxPct, setPensionTaxPct] = useState(25); // effective IRS on pension
   useEffect(() => {
     const s = localStorage.getItem(PROFILE_KEY);
     if (s) {
@@ -115,20 +120,22 @@ export default function ForecastPage() {
         }
         if (typeof p.netSalary === 'number') setNetSalary(p.netSalary);
         if (p.salaryPeriod === 'month' || p.salaryPeriod === 'year') setSalaryPeriod(p.salaryPeriod);
+        if (typeof p.pensionTaxPct === 'number') setPensionTaxPct(p.pensionTaxPct);
       } catch { /* ignore */ }
     }
   }, []);
-  function persistProfile(next: { birthDate: string; netSalary: number; salaryPeriod: 'month' | 'year' }) {
+  function persistProfile(next: { birthDate: string; netSalary: number; salaryPeriod: 'month' | 'year'; pensionTaxPct: number }) {
     localStorage.setItem(PROFILE_KEY, JSON.stringify(next));
   }
   function updateBirthDate(bd: string) {
     setBirthDate(bd);
-    persistProfile({ birthDate: bd, netSalary, salaryPeriod });
+    persistProfile({ birthDate: bd, netSalary, salaryPeriod, pensionTaxPct });
     const age = ageFrom(bd);
     if (age != null) setYears(Math.min(40, Math.max(1, Math.round(PT_RETIREMENT_AGE - age))));
   }
-  function updateSalary(v: number) { setNetSalary(v); persistProfile({ birthDate, netSalary: v, salaryPeriod }); }
-  function updateSalaryPeriod(p: 'month' | 'year') { setSalaryPeriod(p); persistProfile({ birthDate, netSalary, salaryPeriod: p }); }
+  function updateSalary(v: number) { setNetSalary(v); persistProfile({ birthDate, netSalary: v, salaryPeriod, pensionTaxPct }); }
+  function updateSalaryPeriod(p: 'month' | 'year') { setSalaryPeriod(p); persistProfile({ birthDate, netSalary, salaryPeriod: p, pensionTaxPct }); }
+  function updatePensionTax(v: number) { setPensionTaxPct(v); persistProfile({ birthDate, netSalary, salaryPeriod, pensionTaxPct: v }); }
 
   const age = ageFrom(birthDate);
   const yearsToRet = age != null ? Math.round(PT_RETIREMENT_AGE - age) : null;
@@ -137,6 +144,14 @@ export default function ForecastPage() {
     const { data: txs } = await supabase.from('transactions').select('*');
     const { data: vals } = await supabase
       .from('valuations').select('*').order('as_of_date', { ascending: true });
+
+    // Pension scenarios (optional) — default to the legal-age value if present
+    const { data: pen } = await supabase.from('pension_sim').select('scenario, gross, title');
+    if (pen?.length) {
+      setPensionRows(pen);
+      const has = (s: string) => pen.some((p) => p.scenario === s && p.gross);
+      setPensionUse(has('legal') ? 'legal' : has('personal') ? 'personal' : has('early') ? 'early' : 'none');
+    }
 
     if (!txs) { setLoading(false); return; }
 
@@ -242,7 +257,7 @@ export default function ForecastPage() {
     const annual = fire.period === 'year' ? fire.amount : fire.amount * 12;
     const swr = fire.swr / 100;
     const infl = fire.inflation / 100;
-    const fireNumber = swr > 0 ? annual / swr : 0;          // in today's money
+    const fireNumber = swr > 0 ? annual / swr : 0;          // in today's money (pension excluded)
     const months = years * 12;
 
     const netTotal = (t: number) => rows.reduce((a, r) => a + netAt(r, t), 0);
@@ -256,7 +271,7 @@ export default function ForecastPage() {
     let fiMonth = -1;
     for (let t = 0; t <= months; t++) {
       const target = fireNumber * Math.pow(1 + infl, t / 12);
-      if (netTotal(t) >= target && fireNumber > 0) { fiMonth = t; break; }
+      if (fireNumber > 0 && netTotal(t) >= target) { fiMonth = t; break; }
     }
 
     // Coast FIRE: target at the traditional-retirement date
@@ -265,13 +280,19 @@ export default function ForecastPage() {
     let coastMonth = -1;
     for (let t = 0; t <= Math.min(months, retMonths); t++) {
       const grown = netTotal(t) * Math.pow(1 + blended / 100, (retMonths - t) / 12);
-      if (grown >= targetAtRet && fireNumber > 0) { coastMonth = t; break; }
+      if (fireNumber > 0 && grown >= targetAtRet) { coastMonth = t; break; }
     }
 
     const multiple = swr > 0 ? 1 / swr : 0;       // e.g. 25× at 4%
     const monthlyIncome = (fireNumber * swr) / 12; // safe monthly draw at FI (today's money)
     return { annual, fireNumber, fiMonth, coastMonth, multiple, monthlyIncome, blended };
   }, [rows, years, fire]);
+
+  // State pension as EXTRA retirement income (not part of the FIRE target).
+  const pensionGross = pensionUse !== 'none'
+    ? Number(pensionRows.find((p) => p.scenario === pensionUse)?.gross ?? 0) : 0;
+  const pensionNet = pensionGross * (1 - pensionTaxPct / 100);   // after PT IRS
+  const retirementIncome = fireCalc.monthlyIncome + pensionNet;  // safe draw + net pension
 
   const fmt = (n: number) =>
     `€${n.toLocaleString('pt-PT', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
@@ -510,6 +531,46 @@ export default function ForecastPage() {
               <Card label="Safe income at FI /mo" value={`${fmt(fireCalc.monthlyIncome)} (today)`} />
             </div>
           )}
+
+          {/* Retirement income = investment safe withdrawal + state pension (extra) */}
+          <div className="bg-white dark:bg-[#0a0a0a] p-5 rounded-2xl border border-gray-200 dark:border-gold-500/20 mb-6">
+            <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3">
+              <div className="flex items-center gap-3 flex-wrap">
+                <div className="flex items-center gap-2">
+                  <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Add state pension</label>
+                  <select
+                    value={pensionUse}
+                    onChange={(e) => setPensionUse(e.target.value as typeof pensionUse)}
+                    className="bg-gray-50 dark:bg-[#111] border border-gray-300 dark:border-gold-500/30 text-sm rounded-lg p-2 text-gray-900 dark:text-white outline-none"
+                  >
+                    <option value="none">None</option>
+                    {(['early', 'personal', 'legal'] as const).map((s) => {
+                      const g = Number(pensionRows.find((p) => p.scenario === s)?.gross ?? 0);
+                      return g > 0 ? <option key={s} value={s}>{s} · {fmt(g)}/mo</option> : null;
+                    })}
+                  </select>
+                </div>
+                <div className="flex items-center gap-2">
+                  <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider">IRS %</label>
+                  <NumInput value={pensionTaxPct} step={0.5} onChange={updatePensionTax} />
+                </div>
+              </div>
+              {pensionRows.length === 0 ? (
+                <p className="text-sm text-gray-400">No pension saved — add it in the <strong>Pension</strong> tab.</p>
+              ) : (
+                <div className="flex items-center gap-6 text-sm flex-wrap">
+                  <span className="text-gray-500 dark:text-gray-400">Investment draw <strong className="dark:text-white">{fmt(fireCalc.monthlyIncome)}/mo</strong></span>
+                  <span className="text-gray-500 dark:text-gray-400">+ Pension (net) <strong className="dark:text-white">{fmt(pensionNet)}/mo</strong> <span className="text-gray-400">(gross {fmt(pensionGross)})</span></span>
+                  <span className="text-gray-700 dark:text-gray-200">= Total retirement income <strong className="text-indigo-600 dark:text-gold-400">{fmt(retirementIncome)}/mo</strong></span>
+                </div>
+              )}
+            </div>
+            <p className="text-[11px] text-gray-400 normal-case mt-2">
+              Pension is added on top of your FIRE safe withdrawal — it does <em>not</em> change the FIRE
+              number or FI date above. Net pension = gross × (1 − IRS%). PT pensions are taxed as income
+              (progressive IRS); set the effective rate here. Investment draw is in today&apos;s money.
+            </p>
+          </div>
 
           <div className="text-sm text-gray-500 dark:text-gray-400 -mt-2 mb-6 leading-relaxed space-y-2 max-w-3xl">
             <p>How these numbers work:</p>

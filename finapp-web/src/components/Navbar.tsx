@@ -43,6 +43,7 @@ export default function Navbar() {
           <Link href="/transactions" className={getLinkStyles('/transactions')}>Transactions</Link>
           <Link href="/forecast" className={getLinkStyles('/forecast')}>Forecast</Link>
           <Link href="/lego" className={getLinkStyles('/lego')}>Lego</Link>
+          <Link href="/pension" className={getLinkStyles('/pension')}>Pension</Link>
         </div>
 
         <ThemeToggle />
