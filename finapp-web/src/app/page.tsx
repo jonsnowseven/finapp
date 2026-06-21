@@ -2,6 +2,9 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { entityHex, typeSign, cryptoSymbol, TR_EUR_SYMBOL, defaultReturn, defaultTer, defaultTax, DEFAULT_MONTHLY_BUY } from '../lib/entities';
+import { xirr, type CashFlow } from '../lib/finance';
+import AllocationPie from '../components/AllocationPie';
+import NetWorthChart from '../components/NetWorthChart';
 import { RefreshCw } from 'lucide-react';
 
 interface EntityBalance {
@@ -16,6 +19,8 @@ interface EntityBalance {
 export default function HomePage() {
   const [metrics, setMetrics] = useState({ totalValue: 0, transactionCount: 0, totalFees: 0 });
   const [entityBalances, setEntityBalances] = useState<EntityBalance[]>([]);
+  const [xirrRate, setXirrRate] = useState<number | null>(null);
+  const [snapshots, setSnapshots] = useState<{ as_of: string; total: number }[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [resetting, setResetting] = useState(false);
@@ -359,6 +364,31 @@ export default function HomePage() {
 
       setMetrics({ totalValue: total, transactionCount: data.length, totalFees: fees });
       setEntityBalances(balances);
+
+      // XIRR: contributions (buy/deposit) negative, withdrawals (sell) positive,
+      // plus current total as a final inflow today. interest/dividend are internal.
+      const cfs: CashFlow[] = [];
+      for (const tx of data) {
+        const t = (tx.transaction_type ?? '').toLowerCase();
+        const amt = Number(tx.amount);
+        if (t === 'buy' || t === 'deposit') cfs.push({ date: new Date(tx.date), amount: -amt });
+        else if (t === 'sell') cfs.push({ date: new Date(tx.date), amount: amt });
+      }
+      if (total > 0) cfs.push({ date: new Date(), amount: total });
+      setXirrRate(xirr(cfs));
+
+      // Persist today's snapshot (daily upsert), then load the history.
+      if (total > 0) {
+        const by_entity = Object.fromEntries(balances.map((b) => [b.entity, Math.round(displayVal(b))]));
+        try {
+          await fetch('/api/snapshot', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ as_of: new Date().toISOString().slice(0, 10), total: Math.round(total), by_entity }),
+          });
+        } catch { /* ignore */ }
+      }
+      const { data: snaps } = await supabase.from('snapshots').select('as_of, total').order('as_of', { ascending: true });
+      if (snaps) setSnapshots(snaps.map((s) => ({ as_of: s.as_of, total: Number(s.total) })));
     }
     setLoading(false);
   }
@@ -426,11 +456,18 @@ export default function HomePage() {
       ) : (
         <>
           {/* Top summary row */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
             <div className="bg-white dark:bg-[#0a0a0a] p-6 rounded-2xl border border-gray-200 dark:border-gold-500/20 shadow-sm transition-colors duration-200">
               <p className="text-sm font-medium text-gray-400 uppercase tracking-wider">Total Portfolio Value</p>
               <p className="text-3xl font-bold mt-2 dark:text-white">{fmt(metrics.totalValue)}</p>
               <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">Valuation where available, else net invested</p>
+            </div>
+            <div className="bg-white dark:bg-[#0a0a0a] p-6 rounded-2xl border border-gray-200 dark:border-gold-500/20 shadow-sm transition-colors duration-200">
+              <p className="text-sm font-medium text-gray-400 uppercase tracking-wider">Return (XIRR)</p>
+              <p className={`text-3xl font-bold mt-2 ${xirrRate == null ? 'text-gray-400' : xirrRate >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-500 dark:text-red-400'}`}>
+                {xirrRate == null ? '—' : `${(xirrRate * 100).toFixed(1)}%`}
+              </p>
+              <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">Money-weighted annual return</p>
             </div>
             <div className="bg-white dark:bg-[#0a0a0a] p-6 rounded-2xl border border-gray-200 dark:border-gold-500/20 shadow-sm transition-colors duration-200">
               <p className="text-sm font-medium text-gray-400 uppercase tracking-wider">Tracked Operations</p>
@@ -440,6 +477,11 @@ export default function HomePage() {
               <p className="text-sm font-medium text-gray-400 uppercase tracking-wider">Total Fees Paid</p>
               <p className="text-3xl font-bold mt-2 text-red-500 dark:text-red-400/90">{fmt(metrics.totalFees)}</p>
             </div>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+            <NetWorthChart data={snapshots} />
+            <AllocationPie data={entityBalances.map((b) => ({ name: b.entity, value: b.valuation ?? b.balance }))} />
           </div>
 
           {/* Per-entity balance widgets */}

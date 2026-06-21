@@ -51,6 +51,24 @@ create table if not exists valuations (
   CONSTRAINT valuations_entity_date_key UNIQUE (entity, as_of_date)
 );
 
+-- Daily net-worth snapshots (written by the dashboard on load/refresh) so the
+-- app can chart net worth over time. One row per day.
+create table if not exists snapshots (
+  id uuid default gen_random_uuid() primary key,
+  created_at timestamp with time zone default timezone('utc'::text, now()) not null,
+  as_of date not null,
+  total numeric not null,
+  by_entity jsonb,
+  constraint snapshots_as_of_key unique (as_of)
+);
+alter table snapshots enable row level security;
+drop policy if exists "authenticated read snapshots" on public.snapshots;
+create policy "authenticated read snapshots"
+  on public.snapshots for select to authenticated using (true);
+revoke all on public.snapshots from anon;
+grant select on public.snapshots to authenticated;
+grant all on public.snapshots to service_role;
+
 -- Portugal Social Security retirement simulation (manually entered from the
 -- official simulator image). One row per scenario.
 create table if not exists pension_sim (
