@@ -71,12 +71,13 @@ export const defaultTer = (entity: string) => DEFAULT_TER[entity] ?? 0.2;
 // Default recurring monthly contribution (€) per entity, used to prefill the forecast.
 // Editable in the UI; falls back to history-detected amount for unlisted entities.
 export const DEFAULT_MONTHLY_BUY: Record<string, number> = {
-  'Aforro':         50,
-  'Banco Invest':   100,
+  'Aforro':         70,
+  'Banco Invest':   146,
   'DeGiro':         0,
   'Kraken':         0,
-  'Revolut':        200,
-  'Trade Republic': 850,
+  'Revolut':        50,
+  'Trade Republic': 1050,
+  'SGF':            50,
 };
 
 // Maps the asset_name stored by the Kraken importer to a Yahoo Finance EUR symbol,
