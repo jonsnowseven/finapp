@@ -70,7 +70,7 @@ export default function LegoPage() {
           title="Import LEGO sets"
           description="Upload a BrickEconomy-style portfolio PDF"
           endpoint="/api/import/lego"
-          hint="BrickEconomy → your collection/portfolio → export/print to PDF (Set, Name, Theme, Retail, Paid, Value, New/Used, Growth%)."
+          hint="Copy the table from your BrickEconomy collection/portfolio, paste it into Google Sheets (or Excel), then export/print that sheet as PDF (columns: Set, Name, Theme, Retail, Paid, Value, New, Used, Growth%)."
           onClose={() => setShowImport(false)}
           onImported={() => { setShowImport(false); handleRefresh(); }}
         />
