@@ -5,7 +5,7 @@ import { entityHex, typeSign, cryptoSymbol, TR_EUR_SYMBOL, defaultReturn, defaul
 import { xirr, type CashFlow } from '../lib/finance';
 import AllocationPie from '../components/AllocationPie';
 import NetWorthChart from '../components/NetWorthChart';
-import { RefreshCw } from 'lucide-react';
+import { RefreshCw, Eye, EyeOff } from 'lucide-react';
 
 interface EntityBalance {
   entity: string;
@@ -29,6 +29,16 @@ export default function HomePage() {
 
   const fmt = (n: number) =>
     `€${n.toLocaleString('pt-PT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
+  // Hide balances by default; persist the choice.
+  const [hideBalance, setHideBalance] = useState(true);
+  useEffect(() => {
+    setHideBalance(localStorage.getItem('finapp_hide_balance') !== 'false');
+  }, []);
+  function toggleHide() {
+    setHideBalance((h) => { const next = !h; localStorage.setItem('finapp_hide_balance', String(next)); return next; });
+  }
+  const money = (n: number) => (hideBalance ? '••••••' : fmt(n));
 
   const [report, setReport] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
@@ -430,6 +440,13 @@ export default function HomePage() {
         </div>
         <div className="flex items-center gap-2 shrink-0 mt-1">
           <button
+            onClick={toggleHide}
+            title={hideBalance ? 'Show balances' : 'Hide balances'}
+            className="flex items-center px-3 py-2 rounded-xl border border-gray-300 dark:border-gold-500/30 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-[#1a1a1a] transition-colors"
+          >
+            {hideBalance ? <EyeOff size={14} /> : <Eye size={14} />}
+          </button>
+          <button
             onClick={handleRefresh}
             disabled={refreshing || loading}
             title="Refresh balances & live prices"
@@ -459,7 +476,7 @@ export default function HomePage() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
             <div className="bg-white dark:bg-[#0a0a0a] p-6 rounded-2xl border border-gray-200 dark:border-gold-500/20 shadow-sm transition-colors duration-200">
               <p className="text-sm font-medium text-gray-400 uppercase tracking-wider">Total Portfolio Value</p>
-              <p className="text-3xl font-bold mt-2 dark:text-white">{fmt(metrics.totalValue)}</p>
+              <p className="text-3xl font-bold mt-2 dark:text-white">{money(metrics.totalValue)}</p>
               <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">Valuation where available, else net invested</p>
             </div>
             <div className="bg-white dark:bg-[#0a0a0a] p-6 rounded-2xl border border-gray-200 dark:border-gold-500/20 shadow-sm transition-colors duration-200">
@@ -475,11 +492,11 @@ export default function HomePage() {
             </div>
             <div className="bg-white dark:bg-[#0a0a0a] p-6 rounded-2xl border border-gray-200 dark:border-gold-500/20 shadow-sm transition-colors duration-200">
               <p className="text-sm font-medium text-gray-400 uppercase tracking-wider">Total Fees Paid</p>
-              <p className="text-3xl font-bold mt-2 text-red-500 dark:text-red-400/90">{fmt(metrics.totalFees)}</p>
+              <p className="text-3xl font-bold mt-2 text-red-500 dark:text-red-400/90">{money(metrics.totalFees)}</p>
             </div>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+          <div className={`grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6 ${hideBalance ? 'blur-sm select-none pointer-events-none' : ''}`}>
             <NetWorthChart data={snapshots} />
             <AllocationPie data={entityBalances.map((b) => ({ name: b.entity, value: b.valuation ?? b.balance }))} />
           </div>
@@ -502,7 +519,7 @@ export default function HomePage() {
                   <p className="text-sm font-semibold text-gray-700 dark:text-gray-300">{entity}</p>
                 </div>
                 <div className="flex items-center gap-1.5">
-                  <p className="text-2xl font-bold dark:text-white">{fmt(valuation ?? balance)}</p>
+                  <p className="text-2xl font-bold dark:text-white">{money(valuation ?? balance)}</p>
                   {info && (
                     <span
                       title={info}
@@ -515,7 +532,7 @@ export default function HomePage() {
                 </div>
                 {valuation !== undefined ? (
                   <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
-                    Valuation · {valuationDate} · invested {fmt(balance)}
+                    Valuation · {valuationDate} · invested {money(balance)}
                   </p>
                 ) : (
                   <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">{count} operation{count !== 1 ? 's' : ''}</p>
