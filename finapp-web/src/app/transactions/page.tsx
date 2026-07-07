@@ -100,7 +100,7 @@ export default function TransactionsPage() {
     'Aforro':         'bg-rose-100 text-rose-800 dark:bg-rose-500/15 dark:text-rose-300 dark:border-rose-500/30',
   };
   const entityColor = (e: string) =>
-    ENTITY_COLORS[e] ?? 'bg-gray-100 text-gray-800 dark:bg-gold-500/20 dark:text-gold-400 dark:border-gold-500/20';
+    ENTITY_COLORS[e] ?? 'bg-gray-100 text-gray-800 dark:bg-gold-500/20 dark:text-gold-400 dark:border-line';
 
   return (
     <main className="max-w-7xl mx-auto p-6 md:p-8">
@@ -186,7 +186,7 @@ export default function TransactionsPage() {
           <div className="relative">
             <button
               onClick={() => setShowImportMenu(v => !v)}
-              className="flex items-center gap-2 px-3 py-2 rounded-xl border border-gray-300 dark:border-gold-500/30 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-[#1a1a1a] transition-colors"
+              className="flex items-center gap-2 px-3 py-2 rounded-xl border border-gray-300 dark:border-line text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-surface-3 transition-colors"
             >
               <Upload size={14} />
               Import
@@ -196,13 +196,13 @@ export default function TransactionsPage() {
               <>
                 {/* backdrop to close on outside click */}
                 <div className="fixed inset-0 z-10" onClick={() => setShowImportMenu(false)} />
-                <div className="absolute right-0 mt-1 z-20 w-44 bg-white dark:bg-[#111] border border-gray-200 dark:border-gold-500/20 rounded-xl shadow-lg overflow-hidden">
+                <div className="absolute right-0 mt-1 z-20 w-44 bg-white dark:bg-surface-2 border border-gray-200 dark:border-line rounded-xl shadow-lg overflow-hidden">
                   {IMPORT_SOURCES.map(({ label, key, hint }) => (
                     <button
                       key={key}
                       title={hint}
                       onClick={() => { setShowImport(key as ImportKey); setShowImportMenu(false); }}
-                      className="w-full text-left px-4 py-2.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-[#1a1a1a] transition-colors"
+                      className="w-full text-left px-4 py-2.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-surface-3 transition-colors"
                     >
                       {label}
                     </button>
@@ -216,7 +216,7 @@ export default function TransactionsPage() {
             onClick={handleRefresh}
             disabled={refreshing}
             title="Refresh"
-            className="flex items-center gap-2 px-3 py-2 rounded-xl border border-gray-300 dark:border-gold-500/30 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-[#1a1a1a] transition-colors disabled:opacity-50"
+            className="flex items-center gap-2 px-3 py-2 rounded-xl border border-gray-300 dark:border-line text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-surface-3 transition-colors disabled:opacity-50"
           >
             <RefreshCw size={14} className={refreshing ? 'animate-spin' : ''} />
           </button>
@@ -235,24 +235,24 @@ export default function TransactionsPage() {
       </div>
 
       {/* Filter Toolbar Styled for Black/Gold */}
-      <div className="bg-white dark:bg-[#0a0a0a] p-4 rounded-xl border border-gray-200 dark:border-gold-500/20 shadow-sm flex flex-wrap gap-4 mb-6 transition-colors duration-200">
+      <div className="bg-white dark:bg-surface p-4 rounded-xl border border-gray-200 dark:border-line shadow-sm flex flex-wrap gap-4 mb-6 transition-colors duration-200">
         <div className="flex flex-col">
-          <label className="text-xs font-semibold text-gray-400 uppercase mb-1">Filter by Entity</label>
+          <label className="label-caps text-gray-400 dark:text-ink-muted mb-1">Filter by Entity</label>
           <select 
             value={selectedEntity} 
             onChange={(e) => setSelectedEntity(e.target.value)}
-            className="bg-gray-50 dark:bg-[#111] border border-gray-300 dark:border-gold-500/30 text-sm rounded-lg p-2 focus:ring-indigo-500 dark:focus:ring-gold-500 focus:border-indigo-500 dark:focus:border-gold-500 text-gray-900 dark:text-white outline-none transition-colors"
+            className="bg-gray-50 dark:bg-surface-2 border border-gray-300 dark:border-line text-sm rounded-lg p-2 focus:ring-indigo-500 dark:focus:ring-gold-500 focus:border-indigo-500 dark:focus:border-gold-500 text-gray-900 dark:text-white outline-none transition-colors"
           >
             {entities.map(ent => <option key={ent} value={ent}>{ent}</option>)}
           </select>
         </div>
 
         <div className="flex flex-col">
-          <label className="text-xs font-semibold text-gray-400 uppercase mb-1">Filter by Type</label>
+          <label className="label-caps text-gray-400 dark:text-ink-muted mb-1">Filter by Type</label>
           <select 
             value={selectedType} 
             onChange={(e) => setSelectedType(e.target.value)}
-            className="bg-gray-50 dark:bg-[#111] border border-gray-300 dark:border-gold-500/30 text-sm rounded-lg p-2 focus:ring-indigo-500 dark:focus:ring-gold-500 focus:border-indigo-500 dark:focus:border-gold-500 text-gray-900 dark:text-white outline-none transition-colors"
+            className="bg-gray-50 dark:bg-surface-2 border border-gray-300 dark:border-line text-sm rounded-lg p-2 focus:ring-indigo-500 dark:focus:ring-gold-500 focus:border-indigo-500 dark:focus:border-gold-500 text-gray-900 dark:text-white outline-none transition-colors"
           >
             {types.map(t => <option key={t} value={t}>{t}</option>)}
           </select>
@@ -275,11 +275,11 @@ export default function TransactionsPage() {
       {loading ? (
         <div className="text-gray-500 dark:text-gold-500/50 animate-pulse">Loading transaction database...</div>
       ) : (
-        <div className="bg-white dark:bg-[#0a0a0a] rounded-2xl border border-gray-200 dark:border-gold-500/20 shadow-sm overflow-hidden transition-colors duration-200">
+        <div className="bg-white dark:bg-surface rounded-2xl border border-gray-200 dark:border-line shadow-sm overflow-hidden transition-colors duration-200">
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
               <thead>
-                <tr className="bg-gray-50 dark:bg-[#111] border-b border-gray-200 dark:border-gold-500/20 text-xs font-bold text-gray-400 dark:text-gold-500 uppercase tracking-wider">
+                <tr className="bg-gray-50 dark:bg-surface-2 border-b border-gray-200 dark:border-line label-caps text-gray-500 dark:text-gold-500">
                   <th className="p-4">Date</th>
                   <th className="p-4">Institution</th>
                   <th className="p-4">Asset</th>
@@ -295,7 +295,7 @@ export default function TransactionsPage() {
                   </tr>
                 ) : (
                   filteredTransactions.map((tx) => (
-                    <tr key={tx.id} className="hover:bg-gray-50 dark:hover:bg-[#1a1a1a] transition-colors">
+                    <tr key={tx.id} className="hover:bg-gray-50 dark:hover:bg-surface-3 transition-colors">
                       <td className="p-4 font-medium text-gray-600 dark:text-gray-300">{tx.date}</td>
                       <td className="p-4">
                         {/* Styled tag badge */}
@@ -305,8 +305,10 @@ export default function TransactionsPage() {
                       </td>
                       <td className="p-4 font-semibold text-gray-900 dark:text-white">{tx.asset_name}</td>
                       <td className="p-4 font-mono text-xs text-gray-500 dark:text-gray-400">{tx.isin ?? '—'}</td>
-                      <td className="p-4 capitalize text-gray-500 dark:text-gray-400">{tx.transaction_type}</td>
-                      <td className="p-4 text-right font-bold text-gray-900 dark:text-white">{money(Number(tx.amount))}</td>
+                      <td className="p-4">
+                        <span className="inline-block px-2 py-0.5 rounded-full text-xs font-semibold capitalize bg-gray-100 text-gray-600 dark:bg-surface-3 dark:text-ink-muted">{tx.transaction_type}</span>
+                      </td>
+                      <td className="p-4 text-right font-num text-gray-900 dark:text-ink">{money(Number(tx.amount))}</td>
                     </tr>
                   ))
                 )}

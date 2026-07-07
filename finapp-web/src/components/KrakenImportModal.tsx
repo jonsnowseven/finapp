@@ -54,7 +54,7 @@ export default function KrakenImportModal({ onClose, onImported }: Props) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm px-4">
-      <div className="bg-white dark:bg-[#0a0a0a] rounded-2xl border border-gray-200 dark:border-gold-500/20 shadow-xl w-full max-w-md p-6">
+      <div className="bg-white dark:bg-surface rounded-2xl border border-gray-200 dark:border-line shadow-xl w-full max-w-md p-6">
         {/* Header */}
         <div className="flex items-center justify-between mb-5">
           <div>
@@ -75,7 +75,7 @@ export default function KrakenImportModal({ onClose, onImported }: Props) {
               ? 'border-gold-500 bg-gold-500/5'
               : file
                 ? 'border-green-400 dark:border-green-500 bg-green-50 dark:bg-green-900/10'
-                : 'border-gray-300 dark:border-gold-500/30 hover:border-gold-500/60 dark:hover:border-gold-500/60'
+                : 'border-gray-300 dark:border-line hover:border-gold-500/60 dark:hover:border-gold-500/60'
             }`}
         >
           <input ref={inputRef} type="file" accept=".pdf" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFile(f); }} />
@@ -117,7 +117,7 @@ export default function KrakenImportModal({ onClose, onImported }: Props) {
           </button>
           <button
             onClick={onClose}
-            className="px-4 py-2.5 rounded-xl border border-gray-300 dark:border-gold-500/30 text-sm text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-[#1a1a1a] transition-colors"
+            className="px-4 py-2.5 rounded-xl border border-gray-300 dark:border-line text-sm text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-surface-3 transition-colors"
           >
             Close
           </button>

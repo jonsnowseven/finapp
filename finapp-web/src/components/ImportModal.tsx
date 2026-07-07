@@ -101,7 +101,7 @@ export default function ImportModal({ title, description, endpoint, accept = '.p
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm px-4">
-      <div className="bg-white dark:bg-[#0a0a0a] rounded-2xl border border-gray-200 dark:border-gold-500/20 shadow-xl w-full max-w-md p-6">
+      <div className="bg-white dark:bg-surface rounded-2xl border border-gray-200 dark:border-line shadow-xl w-full max-w-md p-6">
         <div className="flex items-center justify-between mb-5">
           <div>
             <h3 className="text-lg font-bold text-gray-900 dark:text-white">{title}</h3>
@@ -111,7 +111,7 @@ export default function ImportModal({ title, description, endpoint, accept = '.p
         </div>
 
         {hint && (
-          <div className="mb-4 flex gap-2 p-3 rounded-lg bg-gray-50 dark:bg-[#111] text-xs text-gray-500 dark:text-gray-400 leading-relaxed">
+          <div className="mb-4 flex gap-2 p-3 rounded-lg bg-gray-50 dark:bg-surface-2 text-xs text-gray-500 dark:text-gray-400 leading-relaxed">
             <span className="shrink-0">💡</span>
             <span><span className="font-semibold text-gray-600 dark:text-gray-300">Where to find it:</span> {hint}</span>
           </div>
@@ -127,7 +127,7 @@ export default function ImportModal({ title, description, endpoint, accept = '.p
               ? 'border-gold-500 bg-gold-500/5'
               : files.length
                 ? 'border-green-400 dark:border-green-500 bg-green-50 dark:bg-green-900/10'
-                : 'border-gray-300 dark:border-gold-500/30 hover:border-gold-500/60 dark:hover:border-gold-500/60'
+                : 'border-gray-300 dark:border-line hover:border-gold-500/60 dark:hover:border-gold-500/60'
             }`}
         >
           <input ref={inputRef} type="file" accept={accept} multiple className="hidden" onChange={(e) => { if (e.target.files?.length) handleFiles(e.target.files); e.target.value = ''; }} />
@@ -150,7 +150,7 @@ export default function ImportModal({ title, description, endpoint, accept = '.p
         {files.length > 0 && status !== 'success' && (
           <div className="mb-4 max-h-32 overflow-y-auto space-y-1">
             {files.map((f, i) => (
-              <div key={`${f.name}_${i}`} className="flex items-center justify-between text-xs px-3 py-1.5 rounded-lg bg-gray-50 dark:bg-[#111]">
+              <div key={`${f.name}_${i}`} className="flex items-center justify-between text-xs px-3 py-1.5 rounded-lg bg-gray-50 dark:bg-surface-2">
                 <span className="truncate text-gray-700 dark:text-gray-300">{f.name}</span>
                 <div className="flex items-center gap-2 shrink-0">
                   <span className="text-gray-400">{(f.size / 1024).toFixed(0)} KB</span>
@@ -175,7 +175,7 @@ export default function ImportModal({ title, description, endpoint, accept = '.p
             </div>
             <div className="max-h-32 overflow-y-auto space-y-1">
               {results.map((r, i) => (
-                <div key={`${r.name}_${i}`} className="flex items-center justify-between text-xs px-3 py-1.5 rounded-lg bg-gray-50 dark:bg-[#111]">
+                <div key={`${r.name}_${i}`} className="flex items-center justify-between text-xs px-3 py-1.5 rounded-lg bg-gray-50 dark:bg-surface-2">
                   <span className="truncate text-gray-700 dark:text-gray-300">{r.name}</span>
                   <span className={`shrink-0 ml-2 ${r.error ? 'text-red-500' : 'text-green-600 dark:text-green-400'}`}>
                     {r.error ? r.error : `${r.inserted}/${r.total}`}
@@ -196,7 +196,7 @@ export default function ImportModal({ title, description, endpoint, accept = '.p
           </button>
           <button
             onClick={onClose}
-            className="px-4 py-2.5 rounded-xl border border-gray-300 dark:border-gold-500/30 text-sm text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-[#1a1a1a] transition-colors"
+            className="px-4 py-2.5 rounded-xl border border-gray-300 dark:border-line text-sm text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-surface-3 transition-colors"
           >
             Close
           </button>

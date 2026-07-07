@@ -21,7 +21,7 @@ export default function UnauthorizedPage() {
           Your account is not authorised to view this dashboard.
         </p>
 
-        <div className="bg-white dark:bg-[#0a0a0a] rounded-2xl border border-gray-200 dark:border-gold-500/20 shadow-sm p-8 mb-8">
+        <div className="bg-white dark:bg-surface rounded-2xl border border-gray-200 dark:border-line shadow-sm p-8 mb-8">
           <blockquote className="text-lg font-medium text-gray-900 dark:text-white italic mb-4">
             &ldquo;{quote}&rdquo;
           </blockquote>
@@ -30,7 +30,7 @@ export default function UnauthorizedPage() {
 
         <Link
           href="/login"
-          className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl border border-gray-300 dark:border-gold-500/30 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-[#1a1a1a] transition-colors"
+          className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl border border-gray-300 dark:border-line text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-surface-3 transition-colors"
         >
           Try a different account
         </Link>

@@ -10,8 +10,8 @@ export default function AllocationPie({ data }: { data: { name: string; value: n
   if (!slices.length || total <= 0) return null;
 
   return (
-    <div className="bg-white dark:bg-[#0a0a0a] p-6 rounded-2xl border border-gray-200 dark:border-gold-500/20 shadow-sm">
-      <p className="text-sm font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-4">Allocation</p>
+    <div className="bg-white dark:bg-surface p-6 rounded-2xl border border-gray-200 dark:border-line shadow-sm">
+      <p className="label-caps text-gray-400 dark:text-ink-muted mb-4">Allocation</p>
       <div className="flex flex-col sm:flex-row items-center gap-6">
         <ResponsiveContainer width="100%" height={220} className="max-w-[260px]">
           <PieChart>

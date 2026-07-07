@@ -3,8 +3,8 @@ import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 
 export default function NetWorthChart({ data }: { data: { as_of: string; total: number }[] }) {
   return (
-    <div className="bg-white dark:bg-[#0a0a0a] p-6 rounded-2xl border border-gray-200 dark:border-gold-500/20 shadow-sm">
-      <p className="text-sm font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-4">Net worth over time</p>
+    <div className="bg-white dark:bg-surface p-6 rounded-2xl border border-gray-200 dark:border-line shadow-sm">
+      <p className="label-caps text-gray-400 dark:text-ink-muted mb-4">Net worth over time</p>
       {data.length < 2 ? (
         <p className="text-sm text-gray-400 py-8 text-center">
           Building history — a point is saved each day you open the dashboard. Come back tomorrow.

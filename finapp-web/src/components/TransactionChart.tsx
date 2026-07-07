@@ -56,7 +56,7 @@ function CustomTooltip({ active, payload, label }: any) {
     .sort((a: any, b: any) => b.value - a.value);
 
   return (
-    <div className="bg-white dark:bg-[#111] border border-gray-200 dark:border-gold-500/30 rounded-xl shadow-lg p-4 text-xs min-w-[180px]">
+    <div className="bg-white dark:bg-surface-2 border border-gray-200 dark:border-line rounded-xl shadow-lg p-4 text-xs min-w-[180px]">
       <p className="font-bold text-gray-900 dark:text-white mb-2">{label}</p>
       <p className="text-gray-500 dark:text-gray-400 mb-3">
         <span className="font-semibold text-indigo-600 dark:text-gold-400">{point.count}</span> transaction{point.count !== 1 ? 's' : ''}
@@ -94,9 +94,9 @@ export default function TransactionChart({ transactions, legendEntities, activeE
   const hasFilter = !!activeEntity && activeEntity !== 'All';
 
   return (
-    <div className="bg-white dark:bg-[#0a0a0a] p-6 rounded-2xl border border-gray-200 dark:border-gold-500/20 shadow-sm mb-6 transition-colors duration-200">
+    <div className="bg-white dark:bg-surface p-6 rounded-2xl border border-gray-200 dark:border-line shadow-sm mb-6 transition-colors duration-200">
       <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
-        <p className="text-sm font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider">
+        <p className="label-caps text-gray-400 dark:text-ink-muted">
           Transaction Activity
         </p>
         {/* Legend — clickable to filter by entity */}

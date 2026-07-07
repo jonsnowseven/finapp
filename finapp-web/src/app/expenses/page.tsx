@@ -199,13 +199,13 @@ export default function ExpensesPage() {
           <p className="text-gray-500 dark:text-gray-400 text-sm">Track cashflow by tag. Import bank CSVs — all rows kept; transfers/investments/savings excluded from totals. Click a tag to re-assign it.</p>
         </div>
         <div className="flex items-center gap-2 mt-1 shrink-0">
-          <button onClick={() => setImp('santander')} className="px-3 py-2 rounded-xl border border-gray-300 dark:border-gold-500/30 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-[#1a1a1a]">Import Santander</button>
-          <button onClick={() => setImp('activobank')} className="px-3 py-2 rounded-xl border border-gray-300 dark:border-gold-500/30 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-[#1a1a1a]">Import ActivoBank</button>
+          <button onClick={() => setImp('santander')} className="px-3 py-2 rounded-xl border border-gray-300 dark:border-line text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-surface-3">Import Santander</button>
+          <button onClick={() => setImp('activobank')} className="px-3 py-2 rounded-xl border border-gray-300 dark:border-line text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-surface-3">Import ActivoBank</button>
         </div>
       </div>
 
       {/* Add form */}
-      <div className="bg-white dark:bg-[#0a0a0a] p-4 rounded-2xl border border-gray-200 dark:border-gold-500/20 mb-6">
+      <div className="bg-white dark:bg-surface p-4 rounded-2xl border border-gray-200 dark:border-line mb-6">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 items-end">
           <Field label="Date"><input type="date" value={date} onChange={(e) => setDate(e.target.value)} className={inp} /></Field>
           <Field label="Amount (€ · negative = expense)"><input type="number" step="0.01" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="-30,00" className={inp} /></Field>
@@ -230,17 +230,17 @@ export default function ExpensesPage() {
       {/* Filters + totals */}
       <div className="flex flex-wrap items-center gap-4 mb-4">
         <label className="flex items-center gap-2 text-sm">
-          <span className="text-xs font-semibold text-gray-400 uppercase">Month</span>
+          <span className="label-caps text-gray-400 dark:text-ink-muted">Month</span>
           <input type="month" value={month} onChange={(e) => setMonth(e.target.value)} className={inp} />
         </label>
         <label className="flex items-center gap-2 text-sm">
-          <span className="text-xs font-semibold text-gray-400 uppercase">Tag</span>
+          <span className="label-caps text-gray-400 dark:text-ink-muted">Tag</span>
           <select value={tagFilter} onChange={(e) => setTagFilter(e.target.value)} className={inp}>
             {allTags.map((t) => <option key={t} value={t}>{t === 'All' ? 'All' : labelOf(t)}</option>)}
           </select>
         </label>
         <label className="flex items-center gap-2 text-sm relative">
-          <span className="text-xs font-semibold text-gray-400 uppercase">Search</span>
+          <span className="label-caps text-gray-400 dark:text-ink-muted">Search</span>
           <input type="search" value={query} onChange={(e) => setQuery(e.target.value)}
             placeholder="Merchant, amount, comment…" className={`${inp} w-56`} />
           {query && <button onClick={() => setQuery('')} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 text-xs" title="Clear">✕</button>}
@@ -251,9 +251,9 @@ export default function ExpensesPage() {
               Filtered ({monthRows.length}) <strong className="text-indigo-600 dark:text-gold-400">{money(filteredOut)}</strong>
             </span>
           )}
-          <span>Expenses <strong className="text-red-500 dark:text-red-400">{money(expensesTotal)}</strong></span>
-          <span>Income <strong className="text-green-600 dark:text-green-400">{money(incomeTotal)}</strong></span>
-          <span>Net <strong className="text-gray-900 dark:text-white">{money(incomeTotal - expensesTotal)}</strong></span>
+          <span>Expenses <strong className="font-num text-red-500 dark:text-loss">{money(expensesTotal)}</strong></span>
+          <span>Income <strong className="font-num text-green-600 dark:text-gain">{money(incomeTotal)}</strong></span>
+          <span>Net <strong className="font-num text-gray-900 dark:text-ink">{money(incomeTotal - expensesTotal)}</strong></span>
         </span>
       </div>
 
@@ -262,11 +262,11 @@ export default function ExpensesPage() {
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* By-tag breakdown */}
-          <div className="bg-white dark:bg-[#0a0a0a] p-6 rounded-2xl border border-gray-200 dark:border-gold-500/20">
-            <p className="text-sm font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-4">By tag · {month}</p>
+          <div className="bg-white dark:bg-surface p-6 rounded-2xl border border-gray-200 dark:border-line">
+            <p className="label-caps text-gray-400 dark:text-ink-muted mb-4">By tag · {month}</p>
             {byTag.length === 0 ? <p className="text-sm text-gray-400">No expenses this month.</p> : byTag.map((t) => (
               <button key={t.tag} onClick={() => setTagFilter((f) => f === t.tag ? 'All' : t.tag)}
-                className={`w-full text-left mb-2 rounded-lg px-1.5 py-1 -mx-1.5 transition-colors hover:bg-gray-50 dark:hover:bg-[#1a1a1a] ${tagFilter === t.tag ? 'bg-gray-100 dark:bg-[#1a1a1a] ring-1 ring-indigo-400 dark:ring-gold-500/40' : ''}`}
+                className={`w-full text-left mb-2 rounded-lg px-1.5 py-1 -mx-1.5 transition-colors hover:bg-gray-50 dark:hover:bg-surface-3 ${tagFilter === t.tag ? 'bg-gray-100 dark:bg-surface-3 ring-1 ring-indigo-400 dark:ring-gold-500/40' : ''}`}
                 title={tagFilter === t.tag ? 'Click to clear filter' : `Filter by ${t.label}`}>
                 <div className="flex justify-between text-sm mb-0.5">
                   <span className="flex items-center gap-1.5 text-gray-700 dark:text-gray-300">
@@ -281,9 +281,9 @@ export default function ExpensesPage() {
           </div>
 
           {/* List */}
-          <div className="lg:col-span-2 bg-white dark:bg-[#0a0a0a] rounded-2xl border border-gray-200 dark:border-gold-500/20 overflow-hidden">
+          <div className="lg:col-span-2 bg-white dark:bg-surface rounded-2xl border border-gray-200 dark:border-line overflow-hidden">
             {selected.size > 0 && (
-              <div className="flex flex-wrap items-center gap-3 px-4 py-2.5 bg-indigo-50 dark:bg-gold-500/10 border-b border-gray-200 dark:border-gold-500/20 text-sm">
+              <div className="flex flex-wrap items-center gap-3 px-4 py-2.5 bg-indigo-50 dark:bg-gold-500/10 border-b border-gray-200 dark:border-line text-sm">
                 <span className="font-medium text-gray-700 dark:text-gold-200">{selected.size} selected</span>
                 <span className="text-gray-400">Re-tag as</span>
                 <TagEditor current={EXPENSE_TAGS[0]} onSave={bulkTag} onCancel={() => setSelected(new Set())} saveLabel={bulking ? '…' : 'Apply'} />
@@ -293,7 +293,7 @@ export default function ExpensesPage() {
             <div className="overflow-x-auto">
             <table className="w-full text-left text-sm min-w-[820px]">
               <thead>
-                <tr className="bg-gray-50 dark:bg-[#111] border-b border-gray-200 dark:border-gold-500/20 text-xs font-bold text-gray-400 dark:text-gold-500 uppercase tracking-wider">
+                <tr className="bg-gray-50 dark:bg-surface-2 border-b border-gray-200 dark:border-line label-caps text-gray-500 dark:text-gold-500">
                   <th className="p-3 w-8">
                     <input type="checkbox" aria-label="Select all"
                       checked={sortedRows.length > 0 && sortedRows.every((r) => selected.has(r.id))}
@@ -316,7 +316,7 @@ export default function ExpensesPage() {
                   const c = tagColor(r.tag);
                   const sel = selected.has(r.id);
                   return (
-                  <tr key={r.id} className={`hover:bg-gray-50 dark:hover:bg-[#1a1a1a] ${sel ? 'bg-indigo-50/60 dark:bg-gold-500/5' : ''} ${countsInTotals(r.tag) ? '' : 'opacity-45'}`} title={countsInTotals(r.tag) ? undefined : 'Excluded from expense/income totals'}>
+                  <tr key={r.id} className={`hover:bg-gray-50 dark:hover:bg-surface-3 ${sel ? 'bg-indigo-50/60 dark:bg-gold-500/5' : ''} ${countsInTotals(r.tag) ? '' : 'opacity-45'}`} title={countsInTotals(r.tag) ? undefined : 'Excluded from expense/income totals'}>
                     <td className="p-3">
                       <input type="checkbox" aria-label="Select row" checked={sel} onChange={() => toggleRow(r.id)}
                         className="accent-indigo-600 dark:accent-gold-500 cursor-pointer" />
@@ -346,7 +346,7 @@ export default function ExpensesPage() {
                           className="text-xs text-gray-300 dark:text-gray-600 hover:text-indigo-500 dark:hover:text-gold-400">＋ note</button>
                       )}
                     </td>
-                    <td className={`p-3 text-right font-medium whitespace-nowrap ${Number(r.amount) < 0 ? 'text-gray-900 dark:text-white' : 'text-green-600 dark:text-green-400'}`}>
+                    <td className={`p-3 text-right font-num whitespace-nowrap ${Number(r.amount) < 0 ? 'text-gray-900 dark:text-ink' : 'text-green-600 dark:text-gain'}`}>
                       {Number(r.amount) < 0 ? `−${money(-Number(r.amount))}` : `+${money(Number(r.amount))}`}
                     </td>
                     <td className="p-3 text-right"><button onClick={() => remove(r.id)} className="text-gray-300 hover:text-red-500" title="Delete">✕</button></td>
@@ -363,7 +363,7 @@ export default function ExpensesPage() {
   );
 }
 
-const inp = 'bg-gray-50 dark:bg-[#111] border border-gray-300 dark:border-gold-500/30 text-sm rounded-lg px-2 py-1.5 text-gray-900 dark:text-white outline-none focus:border-indigo-500 dark:focus:border-gold-500';
+const inp = 'bg-gray-50 dark:bg-surface-2 border border-gray-300 dark:border-line text-sm rounded-lg px-2 py-1.5 text-gray-900 dark:text-white outline-none focus:border-indigo-500 dark:focus:border-gold-500';
 
 function TagEditor({ current, onSave, onCancel, saveLabel }: { current: string; onSave: (t: string) => void; onCancel: () => void; saveLabel?: string }) {
   const isPreset = (EXPENSE_TAGS as readonly string[]).includes(current);

@@ -1,3 +1,44 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@layer base {
+  /* Headings & large numbers use the display face; body stays Inter. */
+  h1, h2, h3, h4 {
+    font-family: var(--font-display), ui-sans-serif, system-ui, sans-serif;
+    letter-spacing: -0.01em;
+  }
+  /* Tabular figures so currency columns align. */
+  .tabular { font-variant-numeric: tabular-nums; }
+}
+
+@layer components {
+  /* Monospace uppercase micro-label — "TOTAL PORTFOLIO VALUE" style. */
+  .label-caps {
+    font-family: var(--font-mono), ui-monospace, monospace;
+    font-size: 11px;
+    font-weight: 600;
+    line-height: 16px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+  .font-display { font-family: var(--font-display), ui-sans-serif, system-ui, sans-serif; }
+  .font-num {
+    font-family: var(--font-display), ui-sans-serif, system-ui, sans-serif;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.01em;
+  }
+  .no-scrollbar { scrollbar-width: none; }
+  .no-scrollbar::-webkit-scrollbar { display: none; }
+}
+
+/* Slim dark scrollbars to match the institutional aesthetic. */
+.dark ::-webkit-scrollbar { width: 10px; height: 10px; }
+.dark ::-webkit-scrollbar-track { background: transparent; }
+.dark ::-webkit-scrollbar-thumb {
+  background: #2c2c2c;
+  border-radius: 9999px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+.dark ::-webkit-scrollbar-thumb:hover { background: #3a3a3a; background-clip: content-box; }

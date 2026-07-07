@@ -454,14 +454,14 @@ export default function HomePage() {
     <main className="max-w-7xl mx-auto p-6 md:p-8">
       <div className="mb-8 flex items-start justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-bold">Welcome Back</h2>
-          <p className="text-gray-500 dark:text-gray-400 text-sm">Here is a summary of your aggregated portfolio assets.</p>
+          <h2 className="text-3xl font-bold tracking-tight">Welcome Back</h2>
+          <p className="text-gray-500 dark:text-ink-muted text-sm mt-1">Summary of your aggregated portfolio assets.</p>
         </div>
         <div className="flex items-center gap-2 shrink-0 mt-1">
           <button
             onClick={toggleHide}
             title={hideBalance ? 'Show balances' : 'Hide balances'}
-            className="flex items-center px-3 py-2 rounded-xl border border-gray-300 dark:border-gold-500/30 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-[#1a1a1a] transition-colors"
+            className="flex items-center px-3 py-2 rounded-xl border border-gray-300 dark:border-line text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-surface-3 transition-colors"
           >
             {hideBalance ? <EyeOff size={14} /> : <Eye size={14} />}
           </button>
@@ -469,7 +469,7 @@ export default function HomePage() {
             onClick={handleRefresh}
             disabled={refreshing || loading}
             title="Refresh balances & live prices"
-            className="flex items-center gap-2 px-3 py-2 rounded-xl border border-gray-300 dark:border-gold-500/30 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-[#1a1a1a] transition-colors disabled:opacity-50"
+            className="flex items-center gap-2 px-3 py-2 rounded-xl border border-gray-300 dark:border-line text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-surface-3 transition-colors disabled:opacity-50"
           >
             <RefreshCw size={14} className={refreshing ? 'animate-spin' : ''} />
             Refresh
@@ -492,26 +492,26 @@ export default function HomePage() {
       ) : (
         <>
           {/* Top summary row */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
-            <div className="bg-white dark:bg-[#0a0a0a] p-6 rounded-2xl border border-gray-200 dark:border-gold-500/20 shadow-sm transition-colors duration-200">
-              <p className="text-sm font-medium text-gray-400 uppercase tracking-wider">Total Portfolio Value</p>
-              <p className="text-3xl font-bold mt-2 dark:text-white">{money(metrics.totalValue)}</p>
-              <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">Valuation where available, else net invested</p>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+            <div className="bg-white dark:bg-surface p-6 rounded-xl border border-gray-200 dark:border-line transition-colors duration-200">
+              <p className="label-caps text-gray-400 dark:text-ink-muted">Total Portfolio Value</p>
+              <p className="font-num text-3xl mt-3 text-indigo-600 dark:text-gold-500">{money(metrics.totalValue)}</p>
+              <p className="text-xs text-gray-400 dark:text-ink-faint mt-2">Valuation where available, else net invested</p>
             </div>
-            <div className="bg-white dark:bg-[#0a0a0a] p-6 rounded-2xl border border-gray-200 dark:border-gold-500/20 shadow-sm transition-colors duration-200">
-              <p className="text-sm font-medium text-gray-400 uppercase tracking-wider">Return (XIRR)</p>
-              <p className={`text-3xl font-bold mt-2 ${xirrRate == null ? 'text-gray-400' : xirrRate >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-500 dark:text-red-400'}`}>
+            <div className="bg-white dark:bg-surface p-6 rounded-xl border border-gray-200 dark:border-line transition-colors duration-200">
+              <p className="label-caps text-gray-400 dark:text-ink-muted">Return (XIRR)</p>
+              <p className={`font-num text-3xl mt-3 ${xirrRate == null ? 'text-gray-400 dark:text-ink-faint' : xirrRate >= 0 ? 'text-green-600 dark:text-gain' : 'text-red-500 dark:text-loss'}`}>
                 {xirrRate == null ? '—' : `${(xirrRate * 100).toFixed(1)}%`}
               </p>
-              <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">Money-weighted annual return</p>
+              <p className="text-xs text-gray-400 dark:text-ink-faint mt-2">Money-weighted annual return</p>
             </div>
-            <div className="bg-white dark:bg-[#0a0a0a] p-6 rounded-2xl border border-gray-200 dark:border-gold-500/20 shadow-sm transition-colors duration-200">
-              <p className="text-sm font-medium text-gray-400 uppercase tracking-wider">Tracked Operations</p>
-              <p className="text-3xl font-bold mt-2 text-indigo-600 dark:text-gold-400">{metrics.transactionCount} items</p>
+            <div className="bg-white dark:bg-surface p-6 rounded-xl border border-gray-200 dark:border-line transition-colors duration-200">
+              <p className="label-caps text-gray-400 dark:text-ink-muted">Tracked Operations</p>
+              <p className="font-num text-3xl mt-3 dark:text-ink">{metrics.transactionCount} <span className="text-base text-gray-400 dark:text-ink-muted font-sans">items</span></p>
             </div>
-            <div className="bg-white dark:bg-[#0a0a0a] p-6 rounded-2xl border border-gray-200 dark:border-gold-500/20 shadow-sm transition-colors duration-200">
-              <p className="text-sm font-medium text-gray-400 uppercase tracking-wider">Total Fees Paid</p>
-              <p className="text-3xl font-bold mt-2 text-red-500 dark:text-red-400/90">{money(metrics.totalFees)}</p>
+            <div className="bg-white dark:bg-surface p-6 rounded-xl border border-gray-200 dark:border-line transition-colors duration-200">
+              <p className="label-caps text-gray-400 dark:text-ink-muted">Total Fees Paid</p>
+              <p className="font-num text-3xl mt-3 text-red-500 dark:text-loss">{money(metrics.totalFees)}</p>
             </div>
           </div>
 
@@ -521,28 +521,28 @@ export default function HomePage() {
           </div>
 
           {/* Per-entity balance widgets */}
-          <p className="text-sm font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-3">Balance by Institution</p>
+          <p className="label-caps text-gray-400 dark:text-ink-muted mb-3">Balance by Institution</p>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             {entityBalances.map(({ entity, balance, count, valuation, valuationDate, info }) => (
               <div
                 key={entity}
-                className="bg-white dark:bg-[#0a0a0a] p-5 rounded-2xl border border-gray-200 dark:border-gold-500/20 shadow-sm transition-colors duration-200 relative overflow-hidden"
+                className="group bg-white dark:bg-surface p-5 pl-6 rounded-xl border border-gray-200 dark:border-line hover:border-gray-300 dark:hover:border-line-2 transition-colors duration-200 relative overflow-hidden"
               >
-                {/* Color accent bar */}
+                {/* Institutional 4px accent border */}
                 <span
                   className="absolute left-0 top-0 bottom-0 w-1"
                   style={{ backgroundColor: entityHex(entity) }}
                 />
                 <div className="flex items-center gap-2 mb-2">
-                  <span className="inline-block w-2.5 h-2.5 rounded-full" style={{ backgroundColor: entityHex(entity) }} />
-                  <p className="text-sm font-semibold text-gray-700 dark:text-gray-300">{entity}</p>
+                  <span className="inline-block w-2 h-2 rounded-full" style={{ backgroundColor: entityHex(entity) }} />
+                  <p className="label-caps text-gray-600 dark:text-ink-muted" style={{ letterSpacing: '0.06em' }}>{entity}</p>
                 </div>
                 <div className="flex items-center gap-1.5">
-                  <p className="text-2xl font-bold dark:text-white">{money(valuation ?? balance)}</p>
+                  <p className="font-num text-2xl dark:text-ink">{money(valuation ?? balance)}</p>
                   {info && (
                     <span
                       title={info}
-                      className="cursor-help text-gray-300 dark:text-gray-600 hover:text-gray-500 dark:hover:text-gray-400 transition-colors text-sm"
+                      className="cursor-help text-gray-300 dark:text-ink-faint hover:text-gray-500 dark:hover:text-gold-400 transition-colors text-sm"
                       aria-label="How this valuation is calculated"
                     >
                       ⓘ
@@ -550,18 +550,18 @@ export default function HomePage() {
                   )}
                 </div>
                 {valuation !== undefined ? (
-                  <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
+                  <p className="text-xs text-gray-400 dark:text-ink-faint mt-1.5">
                     Valuation · {valuationDate} · invested {money(balance)}
                   </p>
                 ) : (
-                  <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">{count} operation{count !== 1 ? 's' : ''}</p>
+                  <p className="text-xs text-gray-400 dark:text-ink-faint mt-1.5">{count} operation{count !== 1 ? 's' : ''}</p>
                 )}
               </div>
             ))}
           </div>
 
           {/* Portfolio report for AI */}
-          <div className="mt-8 bg-white dark:bg-[#0a0a0a] p-6 rounded-2xl border border-gray-200 dark:border-gold-500/20">
+          <div className="mt-8 bg-white dark:bg-surface p-6 rounded-2xl border border-gray-200 dark:border-line">
             <div className="flex items-center justify-between flex-wrap gap-3">
               <div>
                 <h3 className="text-lg font-bold">Portfolio report</h3>
@@ -579,11 +579,11 @@ export default function HomePage() {
               <>
                 <textarea
                   readOnly value={report} rows={14}
-                  className="w-full mt-4 font-mono text-xs bg-gray-50 dark:bg-[#111] border border-gray-300 dark:border-gold-500/30 rounded-lg p-3 text-gray-800 dark:text-gray-200 outline-none"
+                  className="w-full mt-4 font-mono text-xs bg-gray-50 dark:bg-surface-2 border border-gray-300 dark:border-line rounded-lg p-3 text-gray-800 dark:text-gray-200 outline-none"
                 />
                 <div className="flex gap-3 mt-3">
-                  <button onClick={copyReport} className="px-3 py-2 rounded-xl border border-gray-300 dark:border-gold-500/30 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-[#1a1a1a]">{copied ? 'Copied ✓' : 'Copy'}</button>
-                  <button onClick={downloadReport} className="px-3 py-2 rounded-xl border border-gray-300 dark:border-gold-500/30 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-[#1a1a1a]">Download .md</button>
+                  <button onClick={copyReport} className="px-3 py-2 rounded-xl border border-gray-300 dark:border-line text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-surface-3">{copied ? 'Copied ✓' : 'Copy'}</button>
+                  <button onClick={downloadReport} className="px-3 py-2 rounded-xl border border-gray-300 dark:border-line text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-surface-3">Download .md</button>
                 </div>
               </>
             )}

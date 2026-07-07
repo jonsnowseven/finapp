@@ -85,9 +85,9 @@ export default function LegoPage() {
           <p className="text-gray-500 dark:text-gray-400 text-sm">Sets held for appreciation, with a research-based forecast per theme.</p>
         </div>
         <div className="flex items-center gap-2 mt-1 shrink-0">
-          <button onClick={() => setShowAdd(true)} className="flex items-center gap-2 px-3 py-2 rounded-xl border border-gray-300 dark:border-gold-500/30 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-[#1a1a1a]"><Plus size={14} />Add set</button>
-          <button onClick={() => setShowImport(true)} className="flex items-center gap-2 px-3 py-2 rounded-xl border border-gray-300 dark:border-gold-500/30 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-[#1a1a1a]"><Upload size={14} />Import</button>
-          <button onClick={handleRefresh} disabled={refreshing} title="Refresh" className="px-3 py-2 rounded-xl border border-gray-300 dark:border-gold-500/30 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-[#1a1a1a] disabled:opacity-50"><RefreshCw size={14} className={refreshing ? 'animate-spin' : ''} /></button>
+          <button onClick={() => setShowAdd(true)} className="flex items-center gap-2 px-3 py-2 rounded-xl border border-gray-300 dark:border-line text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-surface-3"><Plus size={14} />Add set</button>
+          <button onClick={() => setShowImport(true)} className="flex items-center gap-2 px-3 py-2 rounded-xl border border-gray-300 dark:border-line text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-surface-3"><Upload size={14} />Import</button>
+          <button onClick={handleRefresh} disabled={refreshing} title="Refresh" className="px-3 py-2 rounded-xl border border-gray-300 dark:border-line text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-surface-3 disabled:opacity-50"><RefreshCw size={14} className={refreshing ? 'animate-spin' : ''} /></button>
         </div>
       </div>
 
@@ -101,17 +101,17 @@ export default function LegoPage() {
             <Card label="Paid" value={show(totals.paid)} />
             <Card label="Current value" value={show(totals.value)} accent />
             <Card label="Unrealised gain" value={`${show(totals.gain)} (${totals.paid ? ((totals.gain / totals.paid) * 100).toFixed(1) : '0'}%)`} />
-            <div className="bg-white dark:bg-[#0a0a0a] p-5 rounded-2xl border border-gray-200 dark:border-gold-500/20">
+            <div className="bg-white dark:bg-surface p-5 rounded-2xl border border-gray-200 dark:border-line">
               <p className="text-sm font-medium text-gray-400 uppercase tracking-wider">Forecast · {years}y</p>
               <p className="text-2xl font-bold mt-1 text-indigo-600 dark:text-gold-400">{show(totals.forecast)}</p>
               <input type="range" min={1} max={30} value={years} onChange={(e) => setYears(Number(e.target.value))} className="w-full mt-2 accent-indigo-600 dark:accent-gold-500" />
             </div>
           </div>
 
-          <div className="bg-white dark:bg-[#0a0a0a] rounded-2xl border border-gray-200 dark:border-gold-500/20 overflow-x-auto">
+          <div className="bg-white dark:bg-surface rounded-2xl border border-gray-200 dark:border-line overflow-x-auto">
             <table className="w-full text-left text-sm min-w-[920px]">
               <thead>
-                <tr className="bg-gray-50 dark:bg-[#111] border-b border-gray-200 dark:border-gold-500/20 text-xs font-bold text-gray-400 dark:text-gold-500 uppercase tracking-wider">
+                <tr className="bg-gray-50 dark:bg-surface-2 border-b border-gray-200 dark:border-line label-caps text-gray-500 dark:text-gold-500">
                   <th className="p-3">Set</th>
                   <th className="p-3">Name</th>
                   <th className="p-3">Theme</th>
@@ -128,7 +128,7 @@ export default function LegoPage() {
               </thead>
               <tbody className="divide-y divide-gray-100 dark:divide-gray-800/50">
                 {sets.map((s) => (
-                  <tr key={s.set_no} className="hover:bg-gray-50 dark:hover:bg-[#1a1a1a]">
+                  <tr key={s.set_no} className="hover:bg-gray-50 dark:hover:bg-surface-3">
                     <td className="p-3 font-mono text-xs">
                       <a href={`https://www.brickeconomy.com/set/${s.set_no}/`} target="_blank" rel="noopener noreferrer" className="text-indigo-600 dark:text-gold-400 hover:underline" title="View on BrickEconomy">{s.set_no}</a>
                     </td>
@@ -144,7 +144,7 @@ export default function LegoPage() {
                       <input
                         type="number" step={0.5} value={rateOf(s)}
                         onChange={(e) => saveField(s.set_no, 'annual_pct', Number(e.target.value))}
-                        className="w-20 text-right bg-gray-50 dark:bg-[#111] border border-gray-300 dark:border-gold-500/30 rounded-lg px-2 py-1 dark:text-white outline-none focus:border-indigo-500 dark:focus:border-gold-500"
+                        className="w-20 text-right bg-gray-50 dark:bg-surface-2 border border-gray-300 dark:border-line rounded-lg px-2 py-1 dark:text-white outline-none focus:border-indigo-500 dark:focus:border-gold-500"
                         title={s.annual_pct == null ? 'Theme default (research) — type to override' : 'Custom override'}
                       />
                     </td>
@@ -168,9 +168,9 @@ export default function LegoPage() {
 
 function Card({ label, value, accent }: { label: string; value: string; accent?: boolean }) {
   return (
-    <div className="bg-white dark:bg-[#0a0a0a] p-5 rounded-2xl border border-gray-200 dark:border-gold-500/20">
-      <p className="text-sm font-medium text-gray-400 uppercase tracking-wider">{label}</p>
-      <p className={`text-2xl font-bold mt-1 ${accent ? 'text-indigo-600 dark:text-gold-400' : 'dark:text-white'}`}>{value}</p>
+    <div className="bg-white dark:bg-surface p-5 rounded-xl border border-gray-200 dark:border-line">
+      <p className="label-caps text-gray-400 dark:text-ink-muted">{label}</p>
+      <p className={`font-num text-2xl mt-2 ${accent ? 'text-indigo-600 dark:text-gold-500' : 'dark:text-ink'}`}>{value}</p>
     </div>
   );
 }
@@ -201,7 +201,7 @@ function AddModal({ onClose, onSaved }: { onClose: () => void; onSaved: () => vo
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm px-4">
-      <div className="bg-white dark:bg-[#0a0a0a] rounded-2xl border border-gray-200 dark:border-gold-500/20 shadow-xl w-full max-w-md p-6">
+      <div className="bg-white dark:bg-surface rounded-2xl border border-gray-200 dark:border-line shadow-xl w-full max-w-md p-6">
         <div className="flex items-center justify-between mb-5">
           <h3 className="text-lg font-bold text-gray-900 dark:text-white">Add LEGO set</h3>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-xl">✕</button>
@@ -216,7 +216,7 @@ function AddModal({ onClose, onSaved }: { onClose: () => void; onSaved: () => vo
           </div>
 
           {/* Live forecast preview */}
-          <div className="p-3 rounded-lg bg-gray-50 dark:bg-[#111] text-xs text-gray-500 dark:text-gray-400">
+          <div className="p-3 rounded-lg bg-gray-50 dark:bg-surface-2 text-xs text-gray-500 dark:text-gray-400">
             <span className="font-semibold text-gray-600 dark:text-gray-300">Forecast preview</span> — theme rate ≈ <strong>{rate}%/yr</strong>{f.theme ? '' : ' (default)'}.
             {value > 0 ? <> In 10y ≈ <strong className="text-indigo-600 dark:text-gold-400">{fmt(forecast(value, rate, 10))}</strong>, 20y ≈ <strong className="text-indigo-600 dark:text-gold-400">{fmt(forecast(value, rate, 20))}</strong>.</> : <> Enter a value to preview.</>}
           </div>
@@ -225,7 +225,7 @@ function AddModal({ onClose, onSaved }: { onClose: () => void; onSaved: () => vo
         </div>
         <div className="flex gap-3 mt-5">
           <button onClick={save} disabled={saving} className="flex-1 py-2.5 rounded-xl bg-indigo-600 dark:bg-gold-500 text-white dark:text-black text-sm font-semibold hover:bg-indigo-700 dark:hover:bg-gold-600 disabled:opacity-50">{saving ? 'Saving…' : 'Add set'}</button>
-          <button onClick={onClose} className="px-4 py-2.5 rounded-xl border border-gray-300 dark:border-gold-500/30 text-sm text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-[#1a1a1a]">Cancel</button>
+          <button onClick={onClose} className="px-4 py-2.5 rounded-xl border border-gray-300 dark:border-line text-sm text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-surface-3">Cancel</button>
         </div>
       </div>
     </div>
@@ -236,7 +236,7 @@ function Field({ label, ...props }: { label: string } & React.InputHTMLAttribute
   return (
     <label className="block">
       <span className="text-[11px] text-gray-400 normal-case">{label}</span>
-      <input {...props} className="w-full mt-1 bg-gray-50 dark:bg-[#111] border border-gray-300 dark:border-gold-500/30 rounded-lg px-2 py-1.5 text-sm text-gray-900 dark:text-white outline-none focus:border-indigo-500 dark:focus:border-gold-500" />
+      <input {...props} className="w-full mt-1 bg-gray-50 dark:bg-surface-2 border border-gray-300 dark:border-line rounded-lg px-2 py-1.5 text-sm text-gray-900 dark:text-white outline-none focus:border-indigo-500 dark:focus:border-gold-500" />
     </label>
   );
 }

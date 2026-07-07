@@ -52,7 +52,7 @@ function LoginContent() {
           <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">Personal Portfolio Monitor</p>
         </div>
 
-        <div className="bg-white dark:bg-[#0a0a0a] rounded-2xl border border-gray-200 dark:border-gold-500/20 shadow-sm p-8">
+        <div className="bg-white dark:bg-surface rounded-2xl border border-gray-200 dark:border-line shadow-sm p-8">
           <h2 className="text-lg font-semibold mb-6 text-gray-900 dark:text-white">Sign in to your account</h2>
 
           {error && (
@@ -62,7 +62,7 @@ function LoginContent() {
           <button
             onClick={handleGoogleLogin}
             disabled={loading}
-            className="w-full flex items-center justify-center gap-3 px-4 py-3 rounded-xl border border-gray-300 dark:border-gold-500/30 bg-white dark:bg-[#111] text-gray-900 dark:text-white font-medium text-sm hover:bg-gray-50 dark:hover:bg-[#1a1a1a] transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+            className="w-full flex items-center justify-center gap-3 px-4 py-3 rounded-xl border border-gray-300 dark:border-line bg-white dark:bg-surface-2 text-gray-900 dark:text-white font-medium text-sm hover:bg-gray-50 dark:hover:bg-surface-3 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
           >
             {loading ? (
               <span className="animate-pulse">Redirecting...</span>

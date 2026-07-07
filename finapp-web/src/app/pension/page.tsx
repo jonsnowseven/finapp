@@ -90,35 +90,35 @@ export default function PensionPage() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {rows.map((r) => (
-            <div key={r.scenario} className="bg-white dark:bg-[#0a0a0a] p-6 rounded-2xl border border-gray-200 dark:border-gold-500/20 shadow-sm">
+            <div key={r.scenario} className="bg-white dark:bg-surface p-6 rounded-2xl border border-gray-200 dark:border-line shadow-sm">
               <input
                 value={r.title} onChange={(e) => set(r.scenario, 'title', e.target.value)}
                 className="w-full text-lg font-bold bg-transparent outline-none dark:text-white border-b border-transparent focus:border-gray-300 dark:focus:border-gold-500/40"
               />
               <input
                 type="date" value={r.retirement_date} onChange={(e) => set(r.scenario, 'retirement_date', e.target.value)}
-                className="mt-3 w-full bg-gray-50 dark:bg-[#111] border border-gray-300 dark:border-gold-500/30 rounded-lg px-2 py-1.5 text-sm text-gray-900 dark:text-white outline-none focus:border-indigo-500 dark:focus:border-gold-500"
+                className="mt-3 w-full bg-gray-50 dark:bg-surface-2 border border-gray-300 dark:border-line rounded-lg px-2 py-1.5 text-sm text-gray-900 dark:text-white outline-none focus:border-indigo-500 dark:focus:border-gold-500"
               />
               <input
                 value={r.note} onChange={(e) => set(r.scenario, 'note', e.target.value)}
                 className={`mt-3 inline-block rounded-full px-3 py-1 text-xs font-semibold outline-none ${noteStyle(r.note)}`}
               />
 
-              <p className="mt-5 text-xs font-semibold text-gray-400 uppercase tracking-wider">Valor bruto da pensão (€)</p>
+              <p className="mt-5 label-caps text-gray-400 dark:text-ink-muted">Valor bruto da pensão (€)</p>
               <div className={`flex items-baseline gap-1 mt-1 ${hidden ? 'blur-sm select-none pointer-events-none' : ''}`}>
                 <input
                   type="number" step="0.01" value={r.gross} onChange={(e) => set(r.scenario, 'gross', e.target.value)}
                   placeholder="0,00"
-                  className="w-40 text-3xl font-bold bg-transparent outline-none dark:text-white border-b border-gray-200 dark:border-gold-500/20 focus:border-indigo-500 dark:focus:border-gold-500"
+                  className="w-40 text-3xl font-bold bg-transparent outline-none dark:text-white border-b border-gray-200 dark:border-line focus:border-indigo-500 dark:focus:border-gold-500"
                 />
                 <span className="text-2xl font-bold dark:text-white">€</span>
               </div>
 
-              <p className="mt-5 text-xs font-semibold text-gray-400 uppercase tracking-wider">Idade de acesso</p>
+              <p className="mt-5 label-caps text-gray-400 dark:text-ink-muted">Idade de acesso</p>
               <input
                 value={r.access_age} onChange={(e) => set(r.scenario, 'access_age', e.target.value)}
                 placeholder="64 anos e 11 meses"
-                className="mt-1 w-full bg-gray-50 dark:bg-[#111] border border-gray-300 dark:border-gold-500/30 rounded-lg px-2 py-1.5 text-sm text-gray-900 dark:text-white outline-none focus:border-indigo-500 dark:focus:border-gold-500"
+                className="mt-1 w-full bg-gray-50 dark:bg-surface-2 border border-gray-300 dark:border-line rounded-lg px-2 py-1.5 text-sm text-gray-900 dark:text-white outline-none focus:border-indigo-500 dark:focus:border-gold-500"
               />
             </div>
           ))}

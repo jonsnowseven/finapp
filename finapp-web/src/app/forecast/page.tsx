@@ -352,7 +352,7 @@ export default function ForecastPage() {
             <Card label={`Net value · ${years}y (after tax)`} value={fmt(endNet)} accent />
             <Card label="Total contributed" value={fmt(contributed)} />
             <Card label="Net growth (after tax)" value={fmt(growthNet)} />
-            <div className="bg-white dark:bg-[#0a0a0a] p-5 rounded-2xl border border-gray-200 dark:border-gold-500/20">
+            <div className="bg-white dark:bg-surface p-5 rounded-2xl border border-gray-200 dark:border-line">
               <label className="text-sm font-medium text-gray-400 uppercase tracking-wider">Horizon (years)</label>
               <p className="text-[11px] text-gray-400 normal-case mt-1">How far into the future to project.</p>
               <input
@@ -367,7 +367,7 @@ export default function ForecastPage() {
                 <input
                   type="date" value={birthDate}
                   onChange={(e) => updateBirthDate(e.target.value)}
-                  className="w-full mt-1 bg-gray-50 dark:bg-[#111] border border-gray-300 dark:border-gold-500/30 rounded-lg px-2 py-1 text-sm text-gray-900 dark:text-white outline-none focus:border-indigo-500 dark:focus:border-gold-500"
+                  className="w-full mt-1 bg-gray-50 dark:bg-surface-2 border border-gray-300 dark:border-line rounded-lg px-2 py-1 text-sm text-gray-900 dark:text-white outline-none focus:border-indigo-500 dark:focus:border-gold-500"
                 />
                 {age != null && (
                   <p
@@ -382,7 +382,7 @@ export default function ForecastPage() {
           </div>
 
           {/* Chart */}
-          <div className="bg-white dark:bg-[#0a0a0a] p-6 rounded-2xl border border-gray-200 dark:border-gold-500/20 shadow-sm mb-6">
+          <div className="bg-white dark:bg-surface p-6 rounded-2xl border border-gray-200 dark:border-line shadow-sm mb-6">
             <div className={hidden ? 'blur-sm select-none pointer-events-none' : ''}>
             <ResponsiveContainer width="100%" height={320}>
               <AreaChart data={series} margin={{ top: 4, right: 8, left: 8, bottom: 0 }}>
@@ -422,13 +422,13 @@ export default function ForecastPage() {
               : rate < 50  ? { cls: 'text-emerald-600 dark:text-emerald-400', label: 'great' }
               :              { cls: 'text-teal-500 dark:text-teal-300',     label: 'FIRE pace' };
             return (
-              <div className="bg-white dark:bg-[#0a0a0a] p-4 rounded-2xl border border-gray-200 dark:border-gold-500/20 mb-4 flex flex-wrap items-center gap-x-6 gap-y-3">
+              <div className="bg-white dark:bg-surface p-4 rounded-2xl border border-gray-200 dark:border-line mb-4 flex flex-wrap items-center gap-x-6 gap-y-3">
                 <div className="flex items-center gap-2">
-                  <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Net salary (€)</label>
+                  <label className="label-caps text-gray-400 dark:text-ink-muted">Net salary (€)</label>
                   <NumInput value={netSalary} step={50} onChange={updateSalary} />
                   <button
                     onClick={() => updateSalaryPeriod(salaryPeriod === 'month' ? 'year' : 'month')}
-                    className="text-xs px-2 py-1 rounded-md border border-gray-300 dark:border-gold-500/30 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-[#1a1a1a]"
+                    className="text-xs px-2 py-1 rounded-md border border-gray-300 dark:border-line text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-surface-3"
                   >
                     / {salaryPeriod}
                   </button>
@@ -448,10 +448,10 @@ export default function ForecastPage() {
           })()}
 
           {/* Assumptions table */}
-          <div className="bg-white dark:bg-[#0a0a0a] rounded-2xl border border-gray-200 dark:border-gold-500/20 overflow-x-auto">
+          <div className="bg-white dark:bg-surface rounded-2xl border border-gray-200 dark:border-line overflow-x-auto">
             <table className="w-full text-left text-sm min-w-[640px]">
               <thead>
-                <tr className="bg-gray-50 dark:bg-[#111] border-b border-gray-200 dark:border-gold-500/20 text-xs font-bold text-gray-400 dark:text-gold-500 uppercase tracking-wider">
+                <tr className="bg-gray-50 dark:bg-surface-2 border-b border-gray-200 dark:border-line label-caps text-gray-500 dark:text-gold-500">
                   <th className="p-4">Institution</th>
                   <th className="p-4 text-right cursor-pointer select-none" onClick={() => sortBy('start')} title="What this holding is worth today. Pre-filled from your latest valuation or amount invested — editable. Click to sort.">Start value (€){arrow('start')}</th>
                   <th className="p-4 text-right cursor-pointer select-none" onClick={() => sortBy('monthly')} title="Your typical monthly contribution here — editable. Click to sort.">Monthly buy (€){arrow('monthly')}</th>
@@ -491,12 +491,12 @@ export default function ForecastPage() {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-            <div className="bg-white dark:bg-[#0a0a0a] p-5 rounded-2xl border border-gray-200 dark:border-gold-500/20">
+            <div className="bg-white dark:bg-surface p-5 rounded-2xl border border-gray-200 dark:border-line">
               <div className="flex items-center justify-between mb-2">
-                <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Expenses (€)</label>
+                <label className="label-caps text-gray-400 dark:text-ink-muted">Expenses (€)</label>
                 <button
                   onClick={() => updateFire('period', fire.period === 'month' ? 'year' : 'month')}
-                  className="text-xs px-2 py-0.5 rounded-md border border-gray-300 dark:border-gold-500/30 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-[#1a1a1a]"
+                  className="text-xs px-2 py-0.5 rounded-md border border-gray-300 dark:border-line text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-surface-3"
                 >
                   / {fire.period}
                 </button>
@@ -504,18 +504,18 @@ export default function ForecastPage() {
               <NumInput value={fire.amount} step={fire.period === 'year' ? 1000 : 100} onChange={(v) => updateFire('amount', v)} />
               <p className="text-[11px] text-gray-400 normal-case mt-2">What you spend to live. Use the toggle for monthly or yearly.</p>
             </div>
-            <div className="bg-white dark:bg-[#0a0a0a] p-5 rounded-2xl border border-gray-200 dark:border-gold-500/20">
-              <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Withdrawal rate (%)</label>
+            <div className="bg-white dark:bg-surface p-5 rounded-2xl border border-gray-200 dark:border-line">
+              <label className="label-caps text-gray-400 dark:text-ink-muted">Withdrawal rate (%)</label>
               <div className="mt-2"><NumInput value={fire.swr} step={0.25} onChange={(v) => updateFire('swr', v)} /></div>
               <p className="text-[11px] text-gray-400 normal-case mt-2">% of your pot you'd draw each year in retirement. 4% is the common rule.</p>
             </div>
-            <div className="bg-white dark:bg-[#0a0a0a] p-5 rounded-2xl border border-gray-200 dark:border-gold-500/20">
-              <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Inflation (%)</label>
+            <div className="bg-white dark:bg-surface p-5 rounded-2xl border border-gray-200 dark:border-line">
+              <label className="label-caps text-gray-400 dark:text-ink-muted">Inflation (%)</label>
               <div className="mt-2"><NumInput value={fire.inflation} step={0.1} onChange={(v) => updateFire('inflation', v)} /></div>
               <p className="text-[11px] text-gray-400 normal-case mt-2">Expected yearly rise in prices — keeps the target realistic.</p>
             </div>
-            <div className="bg-white dark:bg-[#0a0a0a] p-5 rounded-2xl border border-gray-200 dark:border-gold-500/20">
-              <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Retire in (years)</label>
+            <div className="bg-white dark:bg-surface p-5 rounded-2xl border border-gray-200 dark:border-line">
+              <label className="label-caps text-gray-400 dark:text-ink-muted">Retire in (years)</label>
               <div className="mt-2"><NumInput value={fire.retYears} step={1} onChange={(v) => updateFire('retYears', v)} /></div>
               <p className="text-[11px] text-gray-400 normal-case mt-2">Years until your normal retirement — used for Coast FIRE.</p>
             </div>
@@ -537,15 +537,15 @@ export default function ForecastPage() {
           )}
 
           {/* Retirement income = investment safe withdrawal + state pension (extra) */}
-          <div className="bg-white dark:bg-[#0a0a0a] p-5 rounded-2xl border border-gray-200 dark:border-gold-500/20 mb-6">
+          <div className="bg-white dark:bg-surface p-5 rounded-2xl border border-gray-200 dark:border-line mb-6">
             <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3">
               <div className="flex items-center gap-3 flex-wrap">
                 <div className="flex items-center gap-2">
-                  <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Add state pension</label>
+                  <label className="label-caps text-gray-400 dark:text-ink-muted">Add state pension</label>
                   <select
                     value={pensionUse}
                     onChange={(e) => setPensionUse(e.target.value as typeof pensionUse)}
-                    className="bg-gray-50 dark:bg-[#111] border border-gray-300 dark:border-gold-500/30 text-sm rounded-lg p-2 text-gray-900 dark:text-white outline-none"
+                    className="bg-gray-50 dark:bg-surface-2 border border-gray-300 dark:border-line text-sm rounded-lg p-2 text-gray-900 dark:text-white outline-none"
                   >
                     <option value="none">None</option>
                     {(['early', 'personal', 'legal'] as const).map((s) => {
@@ -555,7 +555,7 @@ export default function ForecastPage() {
                   </select>
                 </div>
                 <div className="flex items-center gap-2">
-                  <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider">IRS %</label>
+                  <label className="label-caps text-gray-400 dark:text-ink-muted">IRS %</label>
                   <NumInput value={pensionTaxPct} step={0.5} onChange={updatePensionTax} />
                 </div>
               </div>
@@ -593,18 +593,18 @@ export default function ForecastPage() {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-            <div className="bg-white dark:bg-[#0a0a0a] p-5 rounded-2xl border border-gray-200 dark:border-gold-500/20">
-              <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Outstanding balance (€)</label>
+            <div className="bg-white dark:bg-surface p-5 rounded-2xl border border-gray-200 dark:border-line">
+              <label className="label-caps text-gray-400 dark:text-ink-muted">Outstanding balance (€)</label>
               <div className="mt-2"><NumInput value={mortgage.balance} step={1000} onChange={(v) => updateMortgage('balance', v)} /></div>
               <p className="text-[11px] text-gray-400 normal-case mt-2">How much you still owe on the loan today.</p>
             </div>
-            <div className="bg-white dark:bg-[#0a0a0a] p-5 rounded-2xl border border-gray-200 dark:border-gold-500/20">
-              <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Annual rate (%)</label>
+            <div className="bg-white dark:bg-surface p-5 rounded-2xl border border-gray-200 dark:border-line">
+              <label className="label-caps text-gray-400 dark:text-ink-muted">Annual rate (%)</label>
               <div className="mt-2"><NumInput value={mortgage.annualPct} step={0.1} onChange={(v) => updateMortgage('annualPct', v)} /></div>
               <p className="text-[11px] text-gray-400 normal-case mt-2">Yearly interest rate — usually Euribor plus your bank's spread.</p>
             </div>
-            <div className="bg-white dark:bg-[#0a0a0a] p-5 rounded-2xl border border-gray-200 dark:border-gold-500/20">
-              <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Monthly payment (€)</label>
+            <div className="bg-white dark:bg-surface p-5 rounded-2xl border border-gray-200 dark:border-line">
+              <label className="label-caps text-gray-400 dark:text-ink-muted">Monthly payment (€)</label>
               <div className="mt-2"><NumInput value={mortgage.payment} step={50} onChange={(v) => updateMortgage('payment', v)} /></div>
               <p className="text-[11px] text-gray-400 normal-case mt-2">Your monthly instalment (prestação).</p>
             </div>
@@ -635,7 +635,7 @@ export default function ForecastPage() {
                 />
               </div>
 
-              <div className="bg-white dark:bg-[#0a0a0a] p-6 rounded-2xl border border-gray-200 dark:border-gold-500/20 shadow-sm mb-6">
+              <div className="bg-white dark:bg-surface p-6 rounded-2xl border border-gray-200 dark:border-line shadow-sm mb-6">
                 <div className="flex items-center gap-4 mb-4 text-xs">
                   <span className="flex items-center gap-1.5 text-gray-600 dark:text-gray-400"><span className="inline-block w-2.5 h-2.5 rounded-full" style={{ backgroundColor: '#10b981' }} />Investments (net)</span>
                   <span className="flex items-center gap-1.5 text-gray-600 dark:text-gray-400"><span className="inline-block w-2.5 h-2.5 rounded-full" style={{ backgroundColor: '#ef4444' }} />Mortgage balance</span>
@@ -673,9 +673,9 @@ export default function ForecastPage() {
 
 function Card({ label, value, accent }: { label: string; value: string; accent?: boolean }) {
   return (
-    <div className="bg-white dark:bg-[#0a0a0a] p-5 rounded-2xl border border-gray-200 dark:border-gold-500/20">
-      <p className="text-sm font-medium text-gray-400 uppercase tracking-wider">{label}</p>
-      <p className={`text-2xl font-bold mt-2 ${accent ? 'text-indigo-600 dark:text-gold-400' : 'dark:text-white'}`}>{value}</p>
+    <div className="bg-white dark:bg-surface p-5 rounded-xl border border-gray-200 dark:border-line">
+      <p className="label-caps text-gray-400 dark:text-ink-muted">{label}</p>
+      <p className={`font-num text-2xl mt-2.5 ${accent ? 'text-indigo-600 dark:text-gold-500' : 'dark:text-ink'}`}>{value}</p>
     </div>
   );
 }
@@ -685,7 +685,7 @@ function NumInput({ value, onChange, step = 1 }: { value: number; onChange: (v: 
     <input
       type="number" value={value} step={step}
       onChange={(e) => onChange(Number(e.target.value))}
-      className="w-28 text-right bg-gray-50 dark:bg-[#111] border border-gray-300 dark:border-gold-500/30 rounded-lg px-2 py-1 text-gray-900 dark:text-white outline-none focus:border-indigo-500 dark:focus:border-gold-500"
+      className="w-28 text-right bg-gray-50 dark:bg-surface-2 border border-gray-300 dark:border-line rounded-lg px-2 py-1 text-gray-900 dark:text-white outline-none focus:border-indigo-500 dark:focus:border-gold-500"
     />
   );
 }
@@ -695,7 +695,7 @@ function ForecastTooltip({ active, payload, label, fmt }: any) {
   const rows = payload.filter((p: any) => p.value > 0).sort((a: any, b: any) => b.value - a.value);
   const total = payload[0]?.payload?.total ?? 0;
   return (
-    <div className="bg-white dark:bg-[#111] border border-gray-200 dark:border-gold-500/30 rounded-xl shadow-lg p-4 text-xs min-w-[200px]">
+    <div className="bg-white dark:bg-surface-2 border border-gray-200 dark:border-line rounded-xl shadow-lg p-4 text-xs min-w-[200px]">
       <p className="font-bold text-gray-900 dark:text-white mb-2">{label}</p>
       {total > 0 && (
         <p className="text-gray-500 dark:text-gray-400 mb-2">Total <span className="font-semibold text-indigo-600 dark:text-gold-400">{fmt(total)}</span></p>
