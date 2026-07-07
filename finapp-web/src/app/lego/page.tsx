@@ -4,6 +4,7 @@ import { supabase } from '../../lib/supabase';
 import ImportModal from '../../components/ImportModal';
 import { legoRate } from '../../lib/lego';
 import { RefreshCw, Upload, Plus } from 'lucide-react';
+import { useHideBalance } from '../../lib/useHideBalance';
 
 interface LegoSet {
   set_no: string;
@@ -23,6 +24,7 @@ const rateOf = (s: LegoSet) => s.annual_pct ?? legoRate(s.theme);
 const forecast = (value: number, pct: number, years: number) => value * Math.pow(1 + pct / 100, years);
 
 export default function LegoPage() {
+  const { money: show } = useHideBalance();
   const [sets, setSets] = useState<LegoSet[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -96,12 +98,12 @@ export default function LegoPage() {
       ) : (
         <>
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-            <Card label="Paid" value={fmt(totals.paid)} />
-            <Card label="Current value" value={fmt(totals.value)} accent />
-            <Card label="Unrealised gain" value={`${fmt(totals.gain)} (${totals.paid ? ((totals.gain / totals.paid) * 100).toFixed(1) : '0'}%)`} />
+            <Card label="Paid" value={show(totals.paid)} />
+            <Card label="Current value" value={show(totals.value)} accent />
+            <Card label="Unrealised gain" value={`${show(totals.gain)} (${totals.paid ? ((totals.gain / totals.paid) * 100).toFixed(1) : '0'}%)`} />
             <div className="bg-white dark:bg-[#0a0a0a] p-5 rounded-2xl border border-gray-200 dark:border-gold-500/20">
               <p className="text-sm font-medium text-gray-400 uppercase tracking-wider">Forecast · {years}y</p>
-              <p className="text-2xl font-bold mt-1 text-indigo-600 dark:text-gold-400">{fmt(totals.forecast)}</p>
+              <p className="text-2xl font-bold mt-1 text-indigo-600 dark:text-gold-400">{show(totals.forecast)}</p>
               <input type="range" min={1} max={30} value={years} onChange={(e) => setYears(Number(e.target.value))} className="w-full mt-2 accent-indigo-600 dark:accent-gold-500" />
             </div>
           </div>
@@ -132,9 +134,9 @@ export default function LegoPage() {
                     </td>
                     <td className="p-3 font-semibold text-gray-900 dark:text-white">{s.name}</td>
                     <td className="p-3 text-gray-500 dark:text-gray-400">{s.theme}</td>
-                    <td className="p-3 text-right text-gray-600 dark:text-gray-300">{s.retail != null ? fmt(s.retail) : '—'}</td>
-                    <td className="p-3 text-right text-gray-600 dark:text-gray-300">{s.paid != null ? fmt(s.paid) : '—'}</td>
-                    <td className="p-3 text-right font-medium dark:text-white">{s.value != null ? fmt(s.value) : '—'}</td>
+                    <td className="p-3 text-right text-gray-600 dark:text-gray-300">{s.retail != null ? show(s.retail) : '—'}</td>
+                    <td className="p-3 text-right text-gray-600 dark:text-gray-300">{s.paid != null ? show(s.paid) : '—'}</td>
+                    <td className="p-3 text-right font-medium dark:text-white">{s.value != null ? show(s.value) : '—'}</td>
                     <td className="p-3 text-right text-gray-600 dark:text-gray-300">{s.qty_new}</td>
                     <td className="p-3 text-right text-gray-600 dark:text-gray-300">{s.qty_used}</td>
                     <td className={`p-3 text-right ${(s.growth_pct ?? 0) >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-500 dark:text-red-400'}`}>{s.growth_pct != null ? `${s.growth_pct.toFixed(1)}%` : '—'}</td>
@@ -146,7 +148,7 @@ export default function LegoPage() {
                         title={s.annual_pct == null ? 'Theme default (research) — type to override' : 'Custom override'}
                       />
                     </td>
-                    <td className="p-3 text-right font-bold dark:text-white">{fmt(forecast(s.value ?? 0, rateOf(s), years))}</td>
+                    <td className="p-3 text-right font-bold dark:text-white">{show(forecast(s.value ?? 0, rateOf(s), years))}</td>
                     <td className="p-3 text-right"><button onClick={() => remove(s.set_no)} className="text-gray-300 hover:text-red-500 transition-colors" title="Remove">✕</button></td>
                   </tr>
                 ))}

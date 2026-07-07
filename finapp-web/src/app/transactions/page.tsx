@@ -4,6 +4,7 @@ import { supabase } from '../../lib/supabase';
 import TransactionChart from '../../components/TransactionChart';
 import ImportModal from '../../components/ImportModal';
 import { RefreshCw, Upload, ChevronDown } from 'lucide-react';
+import { useHideBalance } from '../../lib/useHideBalance';
 
 type ImportKey = 'kraken' | 'degiro' | 'tr' | 'bancoinvest' | 'sgf' | 'revolut' | 'aforro';
 
@@ -20,6 +21,7 @@ const IMPORT_SOURCES: { key: ImportKey; label: string; hint: string }[] = [
 ];
 
 export default function TransactionsPage() {
+  const { money, hidden } = useHideBalance();
   const [transactions, setTransactions] = useState<any[]>([]);
   const [filteredTransactions, setFilteredTransactions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -259,12 +261,14 @@ export default function TransactionsPage() {
 
       {/* Chart */}
       {!loading && (
+        <div className={hidden ? 'blur-sm select-none pointer-events-none' : ''}>
         <TransactionChart
           transactions={filteredTransactions}
           legendEntities={entities.filter(e => e !== 'All')}
           activeEntity={selectedEntity}
           onEntityClick={(e) => setSelectedEntity(prev => (prev === e ? 'All' : e))}
         />
+        </div>
       )}
 
       {/* Table Styled for Black/Gold */}
@@ -302,7 +306,7 @@ export default function TransactionsPage() {
                       <td className="p-4 font-semibold text-gray-900 dark:text-white">{tx.asset_name}</td>
                       <td className="p-4 font-mono text-xs text-gray-500 dark:text-gray-400">{tx.isin ?? '—'}</td>
                       <td className="p-4 capitalize text-gray-500 dark:text-gray-400">{tx.transaction_type}</td>
-                      <td className="p-4 text-right font-bold text-gray-900 dark:text-white">€{Number(tx.amount).toFixed(2)}</td>
+                      <td className="p-4 text-right font-bold text-gray-900 dark:text-white">{money(Number(tx.amount))}</td>
                     </tr>
                   ))
                 )}

@@ -5,6 +5,7 @@ import {
 } from 'recharts';
 import { supabase } from '../../lib/supabase';
 import { entityHex, typeSign, defaultReturn, defaultTax, defaultTer, DEFAULT_MONTHLY_BUY } from '../../lib/entities';
+import { useHideBalance } from '../../lib/useHideBalance';
 
 interface Assumption {
   entity: string;
@@ -69,6 +70,7 @@ function monthLabel(m: number): string {
 }
 
 export default function ForecastPage() {
+  const { hidden } = useHideBalance();
   const [rows, setRows] = useState<Assumption[]>([]);
   const [years, setYears] = useState(20);
   const [loading, setLoading] = useState(true);
@@ -295,7 +297,7 @@ export default function ForecastPage() {
   const retirementIncome = fireCalc.monthlyIncome + pensionNet;  // safe draw + net pension
 
   const fmt = (n: number) =>
-    `€${n.toLocaleString('pt-PT', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
+    hidden ? '••••••' : `€${n.toLocaleString('pt-PT', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
 
   const startTotal = rows.reduce((a, r) => a + r.start, 0);
   const monthlyTotal = rows.reduce((a, r) => a + r.monthly, 0);
@@ -381,6 +383,7 @@ export default function ForecastPage() {
 
           {/* Chart */}
           <div className="bg-white dark:bg-[#0a0a0a] p-6 rounded-2xl border border-gray-200 dark:border-gold-500/20 shadow-sm mb-6">
+            <div className={hidden ? 'blur-sm select-none pointer-events-none' : ''}>
             <ResponsiveContainer width="100%" height={320}>
               <AreaChart data={series} margin={{ top: 4, right: 8, left: 8, bottom: 0 }}>
                 <defs>
@@ -403,6 +406,7 @@ export default function ForecastPage() {
                 ))}
               </AreaChart>
             </ResponsiveContainer>
+            </div>
           </div>
 
           {/* Savings rate */}
@@ -636,6 +640,7 @@ export default function ForecastPage() {
                   <span className="flex items-center gap-1.5 text-gray-600 dark:text-gray-400"><span className="inline-block w-2.5 h-2.5 rounded-full" style={{ backgroundColor: '#10b981' }} />Investments (net)</span>
                   <span className="flex items-center gap-1.5 text-gray-600 dark:text-gray-400"><span className="inline-block w-2.5 h-2.5 rounded-full" style={{ backgroundColor: '#ef4444' }} />Mortgage balance</span>
                 </div>
+                <div className={hidden ? 'blur-sm select-none pointer-events-none' : ''}>
                 <ResponsiveContainer width="100%" height={280}>
                   <LineChart data={mort.combined} margin={{ top: 4, right: 8, left: 8, bottom: 0 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="rgba(212,175,55,0.1)" />
@@ -646,6 +651,7 @@ export default function ForecastPage() {
                     <Line type="monotone" dataKey="mortgage" name="Mortgage balance" stroke="#ef4444" strokeWidth={2} dot={false} />
                   </LineChart>
                 </ResponsiveContainer>
+                </div>
               </div>
             </>
           )}

@@ -3,6 +3,8 @@ import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { entityHex, typeSign, cryptoSymbol, TR_EUR_SYMBOL, defaultReturn, defaultTer, defaultTax, DEFAULT_MONTHLY_BUY } from '../lib/entities';
 import { xirr, type CashFlow } from '../lib/finance';
+import { summarizeExpenses, type ExpenseRow } from '../lib/expenses';
+import { useHideBalance } from '../lib/useHideBalance';
 import AllocationPie from '../components/AllocationPie';
 import NetWorthChart from '../components/NetWorthChart';
 import { RefreshCw, Eye, EyeOff } from 'lucide-react';
@@ -21,6 +23,7 @@ export default function HomePage() {
   const [entityBalances, setEntityBalances] = useState<EntityBalance[]>([]);
   const [xirrRate, setXirrRate] = useState<number | null>(null);
   const [snapshots, setSnapshots] = useState<{ as_of: string; total: number }[]>([]);
+  const [expenseRows, setExpenseRows] = useState<ExpenseRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [resetting, setResetting] = useState(false);
@@ -30,15 +33,8 @@ export default function HomePage() {
   const fmt = (n: number) =>
     `€${n.toLocaleString('pt-PT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
-  // Hide balances by default; persist the choice.
-  const [hideBalance, setHideBalance] = useState(true);
-  useEffect(() => {
-    setHideBalance(localStorage.getItem('finapp_hide_balance') !== 'false');
-  }, []);
-  function toggleHide() {
-    setHideBalance((h) => { const next = !h; localStorage.setItem('finapp_hide_balance', String(next)); return next; });
-  }
-  const money = (n: number) => (hideBalance ? '••••••' : fmt(n));
+  // Shared hide-balance state (synced with the Navbar toggle and other tabs).
+  const { hidden: hideBalance, toggle: toggleHide, money } = useHideBalance();
 
   const [report, setReport] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
@@ -86,6 +82,25 @@ export default function HomePage() {
       L.push('', '## Mortgage (Crédito Habitação)');
       L.push(`- Outstanding: ${fmt(mort.balance)} · Rate: ${mort.annualPct}% · Payment: ${fmt(mort.payment)}/month`);
     }
+    const liquid = entityBalances
+      .filter((b) => b.entity === 'Aforro' || b.entity === 'Revolut')
+      .reduce((a, b) => a + (b.valuation ?? b.balance), 0);
+    const ex = summarizeExpenses(expenseRows, { liquidSavings: liquid });
+    if (ex) {
+      L.push('', `## Cashflow (avg over last ${ex.months} full month${ex.months > 1 ? 's' : ''}, from imported statements)`);
+      L.push(`- Avg monthly expenses: ${fmt(ex.avgMonthlyExpenses)}`);
+      L.push(`- Avg monthly income: ${fmt(ex.avgMonthlyIncome)}`);
+      if (ex.savingsRate != null) L.push(`- Savings rate: ${(ex.savingsRate * 100).toFixed(1)}%`);
+      if (ex.fixedPct != null) L.push(`- Fixed vs discretionary: ${(ex.fixedPct * 100).toFixed(0)}% fixed / ${((ex.discretionaryPct ?? 0) * 100).toFixed(0)}% discretionary`);
+      if (ex.runwayMonths != null) L.push(`- Emergency runway (liquid savings ÷ monthly expenses): ${ex.runwayMonths.toFixed(1)} months`);
+      if (ex.trendPct != null) L.push(`- Expense trend (recent 3mo vs prior 3mo): ${ex.trendPct >= 0 ? '+' : ''}${(ex.trendPct * 100).toFixed(1)}%`);
+      const top = ex.categories.slice(0, 6);
+      if (top.length) {
+        L.push('- Top categories (share of spend):');
+        for (const c of top) L.push(`  - ${c.label}: ${(c.pct * 100).toFixed(0)}% (${fmt(c.avg)}/mo)`);
+      }
+    }
+
     L.push('', '## Goals', '- Buy / pay off a home; reach financial independence (FIRE).');
     L.push('', '## Request');
     L.push('Analyse this portfolio against my income and goals. Give specific, prioritised ' +
@@ -399,6 +414,10 @@ export default function HomePage() {
       }
       const { data: snaps } = await supabase.from('snapshots').select('as_of, total').order('as_of', { ascending: true });
       if (snaps) setSnapshots(snaps.map((s) => ({ as_of: s.as_of, total: Number(s.total) })));
+
+      // Expenses ledger (for the AI report's cashflow section). Ignored if table absent.
+      const { data: exp } = await supabase.from('expenses').select('date, amount, tag, tag_label');
+      if (exp) setExpenseRows(exp as ExpenseRow[]);
     }
     setLoading(false);
   }

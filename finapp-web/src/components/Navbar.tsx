@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import ThemeToggle from './ThemeToggle';
+import EyeToggle from './EyeToggle';
 import { createSupabaseBrowserClient } from '../lib/supabase-browser';
 import type { User } from '@supabase/supabase-js';
 
@@ -42,12 +43,14 @@ export default function Navbar() {
           <div className="space-x-6 flex items-center">
             <Link href="/" className={getLinkStyles('/')}>Overview</Link>
             <Link href="/transactions" className={getLinkStyles('/transactions')}>Transactions</Link>
+            <Link href="/expenses" className={getLinkStyles('/expenses')}>Expenses</Link>
             <Link href="/forecast" className={getLinkStyles('/forecast')}>Forecast</Link>
             <Link href="/lego" className={getLinkStyles('/lego')}>Lego</Link>
             <Link href="/pension" className={getLinkStyles('/pension')}>Pension</Link>
           </div>
         )}
 
+        {user && <EyeToggle />}
         <ThemeToggle />
 
         {user && (

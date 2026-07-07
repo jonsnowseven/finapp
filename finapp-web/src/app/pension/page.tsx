@@ -1,6 +1,7 @@
 'use client';
 import { useCallback, useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase';
+import { useHideBalance } from '../../lib/useHideBalance';
 
 interface Scenario {
   scenario: 'early' | 'personal' | 'legal';
@@ -27,6 +28,7 @@ const noteStyle = (note: string) => {
 const fmt = (n: number) => `${n.toLocaleString('pt-PT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}€`;
 
 export default function PensionPage() {
+  const { hidden } = useHideBalance();
   const [rows, setRows] = useState<Scenario[]>(DEFAULTS);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -103,7 +105,7 @@ export default function PensionPage() {
               />
 
               <p className="mt-5 text-xs font-semibold text-gray-400 uppercase tracking-wider">Valor bruto da pensão (€)</p>
-              <div className="flex items-baseline gap-1 mt-1">
+              <div className={`flex items-baseline gap-1 mt-1 ${hidden ? 'blur-sm select-none pointer-events-none' : ''}`}>
                 <input
                   type="number" step="0.01" value={r.gross} onChange={(e) => set(r.scenario, 'gross', e.target.value)}
                   placeholder="0,00"
