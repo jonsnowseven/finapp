@@ -38,13 +38,15 @@ export default function Navbar() {
       <h1 className="text-xl font-bold tracking-tight text-indigo-600 dark:text-gold-500">FinApp Dashboard</h1>
 
       <div className="flex items-center space-x-6">
-        <div className="space-x-6 flex items-center">
-          <Link href="/" className={getLinkStyles('/')}>Overview</Link>
-          <Link href="/transactions" className={getLinkStyles('/transactions')}>Transactions</Link>
-          <Link href="/forecast" className={getLinkStyles('/forecast')}>Forecast</Link>
-          <Link href="/lego" className={getLinkStyles('/lego')}>Lego</Link>
-          <Link href="/pension" className={getLinkStyles('/pension')}>Pension</Link>
-        </div>
+        {user && (
+          <div className="space-x-6 flex items-center">
+            <Link href="/" className={getLinkStyles('/')}>Overview</Link>
+            <Link href="/transactions" className={getLinkStyles('/transactions')}>Transactions</Link>
+            <Link href="/forecast" className={getLinkStyles('/forecast')}>Forecast</Link>
+            <Link href="/lego" className={getLinkStyles('/lego')}>Lego</Link>
+            <Link href="/pension" className={getLinkStyles('/pension')}>Pension</Link>
+          </div>
+        )}
 
         <ThemeToggle />
 
