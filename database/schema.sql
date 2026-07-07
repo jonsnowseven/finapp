@@ -51,6 +51,32 @@ create table if not exists valuations (
   CONSTRAINT valuations_entity_date_key UNIQUE (entity, as_of_date)
 );
 
+-- Cashflow: expenses AND income (manual + imported bank statements).
+create table if not exists expenses (
+  id uuid default gen_random_uuid() primary key,
+  created_at timestamp with time zone default timezone('utc'::text, now()) not null,
+  date date not null,
+  amount numeric not null,          -- SIGNED: negative = money out (expense), positive = money in
+  currency text default 'EUR' not null,
+  tag text not null,                -- canonical slug (e.g. 'restaurants-cafes')
+  tag_label text,                   -- display label
+  merchant text,
+  note text,
+  source text default 'manual',     -- 'manual' | 'import'
+  institution text,                 -- e.g. 'Santander', 'ActivoBank' (null for manual)
+  source_document text,             -- dedup key for imports (null for manual)
+  -- UNIQUE constraint (not a partial index) so upsert onConflict works.
+  -- Postgres allows multiple NULLs, so manual rows are unaffected.
+  constraint expenses_source_document_key unique (source_document)
+);
+alter table expenses enable row level security;
+drop policy if exists "authenticated read expenses" on public.expenses;
+create policy "authenticated read expenses"
+  on public.expenses for select to authenticated using (true);
+revoke all on public.expenses from anon;
+grant select on public.expenses to authenticated;
+grant all on public.expenses to service_role;
+
 -- Daily net-worth snapshots (written by the dashboard on load/refresh) so the
 -- app can chart net worth over time. One row per day.
 create table if not exists snapshots (
