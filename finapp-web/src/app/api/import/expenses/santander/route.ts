@@ -1,7 +1,7 @@
 import { requireApiUser } from '../../../../../lib/api-auth';
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { parseBankCsv, toExpenseRecords } from '../../../../../lib/expense-import';
+import { parseBankCsv, parseSantanderPdf, toExpenseRecords, type ParsedRow } from '../../../../../lib/expense-import';
 
 export async function POST(request: Request) {
   const guard = await requireApiUser();
@@ -11,10 +11,21 @@ export async function POST(request: Request) {
     const file = formData.get('file') as File | null;
     if (!file) return NextResponse.json({ error: 'No file uploaded' }, { status: 400 });
 
-    const text = await file.text();   // UTF-8
-    const records = toExpenseRecords('santander', parseBankCsv(text));
+    const isPdf = file.type === 'application/pdf' || /\.pdf$/i.test(file.name);
+
+    let rows: ParsedRow[];
+    if (isPdf) {
+      // "Extrato Consolidado" PDF — parse the Conta à Ordem running-balance table.
+      const pdfParse: (buf: Buffer) => Promise<{ text: string }> = require('pdf-parse');
+      const pdf = await pdfParse(Buffer.from(await file.arrayBuffer()));
+      rows = parseSantanderPdf(pdf.text);
+    } else {
+      rows = parseBankCsv(await file.text());   // CSV export (UTF-8)
+    }
+
+    const records = toExpenseRecords('santander', rows);
     if (records.length === 0) {
-      return NextResponse.json({ error: 'No expenses found. Check the CSV format.' }, { status: 422 });
+      return NextResponse.json({ error: `No expenses found. Check the ${isPdf ? 'PDF statement' : 'CSV'} format.` }, { status: 422 });
     }
 
     const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);

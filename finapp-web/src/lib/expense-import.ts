@@ -23,7 +23,7 @@ export function toIso(d: string): string {
 const RULES: [RegExp, string][] = [
   [/VIAVERDE|VIA VERDE|PETROPRIX|GALP|REPSOL|CEPSA|PARQUE|ESTACIONA|NORAUTO|COMBOIOS|CARRIS|METRO /, 'Transport'],
   [/FARMACIA|WELLS|CUF|HOSPITAL|CLINICA|LENTES DE CONTACTO|SAUDE|DENT/, 'Health & Pharmacy'],
-  [/SEGURO|GENERALI|FIDELIDADE|AEGON|MULTICARE|MULTI-?RISCOS|REALVSEGUROS/, 'Insurance'],
+  [/SEGURO|SEG:|GENERALI|FIDELIDADE|AEGON|MULTICARE|MULTI-?RISCOS|REALVSEGUROS/, 'Insurance'],
   [/NETFLIX|SPOTIFY|OPENAI|CHATGPT|ANTHROPIC|CLAUDE|DISNEY|HBO|YOUTUBE|PRIME VIDEO/, 'Subscriptions'],
   [/VODAFONE|MEO|NOWO|SMAS|EDP|AGUAS|ELETRIC|GAS NATURAL|GALP ENERGIA/, 'Public services'],
   [/CONDOMINIO/, 'House services'],
@@ -47,7 +47,7 @@ export function classify(desc: string, signed: number): string {
     return 'Income';
   }
   // money out
-  if (/P\/ ?REVOLUT|P\/ ?SANTANDER|TRANSFERENCIA PARA JOAO|MB WAY P\//.test(n)) return 'Transfers';
+  if (/P\/ ?REVOLUT|P\/ ?SANTANDER|TRANSFERENCIA PARA JOAO|MB WAY P\/|TRF\.IMED\. P\//.test(n)) return 'Transfers';
   if (/REFORCO AUT|DEP PRAZO/.test(n)) return 'Savings';
   if (/DD SGF|DD BANCO INVEST|SGF - ?SOCIEDAD/.test(n)) return 'Investments';
   for (const [re, label] of RULES) if (re.test(n)) return label;
@@ -80,6 +80,119 @@ export function parseBankCsv(text: string): ParsedRow[] {
     const date = toIso(c[0]);
     if (!date) continue;
     rows.push({ date, desc: c[2] ?? '', signed: parsePtMoney(c[3] ?? '') });
+  }
+  return rows;
+}
+
+// PDF money token: dot decimal, space thousands (e.g. "1 234.56", "2 450.05").
+const PDF_MONEY = /\d{1,3}(?:[ ]\d{3})*\.\d{2}/g;
+const pdfNum = (s: string) => parseFloat(s.replace(/ /g, ''));
+
+// Valid statement date token: month 1-12, day 01-31 (so amounts like "45.30"
+// or "18.00" can't be mistaken for a date anchor).
+const DATE_TOK = String.raw`(?:1[0-2]|0?[1-9])\.(?:0[1-9]|[12]\d|3[01])`;
+
+// Parse an ActivoBank "EXTRATO COMBINADO" PDF (CONTA SIMPLES movements).
+// Layout per row: DATA_LANC(M.DD) DATA_VALOR(M.DD) DESCRITIVO [DEBITO|CREDITO] SALDO
+// The DEBITO/CREDITO columns collapse in extracted text, so the sign+amount are
+// derived from the running-balance delta (saldo_i − saldo_{i-1}) — robust and exact.
+export function parseActivoBankPdf(text: string): ParsedRow[] {
+  const t = text.replace(/ /g, ' ');
+  const period = t.match(/EXTRATO DE\s+(\d{4})\/(\d{2})\/(\d{2})/);
+  const year = period ? Number(period[1]) : new Date().getFullYear();
+  const startMonth = period ? Number(period[2]) : 1;
+
+  // pdf-parse often drops line breaks / glues columns. Rebuild rows: break
+  // before each two-date anchor (posting + value date) followed by a letter,
+  // and before SALDO markers. The date-range guard stops amounts matching.
+  const anchor = new RegExp(`(${DATE_TOK}) ?(${DATE_TOK})(?=\\s+[A-Za-zÀ-ÿ])`, 'g');
+  const prepped = t
+    .replace(/\s+/g, ' ')          // pdf-parse keeps newlines/extra spaces — flatten first
+    .replace(anchor, '\n$1 $2 ')
+    .replace(/\s(SALDO INICIAL|SALDO FINAL|SALDO DISPONIVEL)/g, '\n$1 ');
+
+  const rows: ParsedRow[] = [];
+  let capturing = false;
+  let prev = NaN;
+
+  for (const raw of prepped.split(/\r?\n/)) {
+    const line = raw.replace(/\s+/g, ' ').trim();
+    if (!line) continue;
+
+    // Movement region: from "SALDO INICIAL <saldo>" to "SALDO FINAL".
+    const ini = line.match(/SALDO INICIAL\s+(\d{1,3}(?:[ ]\d{3})*\.\d{2})/);
+    if (ini) { prev = pdfNum(ini[1]); capturing = true; continue; }
+    if (/SALDO (FINAL|DISPONIVEL)/.test(line)) { capturing = false; continue; }
+    if (!capturing) continue;
+
+    // Row starts with two M.DD dates (posting + value date).
+    const m = line.match(/^(\d{1,2})\.(\d{2})\s+\d{1,2}\.\d{2}\s+(.*)$/);
+    if (!m) continue;                                  // header/footer/carry lines
+    const month = Number(m[1]);
+    const day = Number(m[2]);
+    const rest = m[3];
+
+    const toks = rest.match(PDF_MONEY);
+    if (!toks || !toks.length) continue;
+    const saldo = pdfNum(toks[toks.length - 1]);       // running balance = last token
+    if (!isFinite(saldo)) continue;
+    if (!isFinite(prev)) { prev = saldo; continue; }
+
+    const signed = Math.round((saldo - prev) * 100) / 100;
+    prev = saldo;
+    if (signed === 0) continue;
+
+    const cut = rest.indexOf(toks[0]);                 // desc = text before first amount
+    const desc = (cut > 0 ? rest.slice(0, cut) : rest).trim();
+    const yr = month < startMonth ? year + 1 : year;   // handle Dec→Jan wrap
+    const date = `${yr}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+    rows.push({ date, signed, desc });
+  }
+  return rows;
+}
+
+// PT money in Santander PDF: dot thousands, comma decimal ("1.598,73", "37,74").
+const ptPdfNum = (s: string) => parseFloat(s.replace(/\./g, '').replace(',', '.'));
+
+// Parse a Banco Santander Totta "Extrato Consolidado" PDF (Conta à Ordem).
+// Row (columns collapse in extracted text): DATA_MOV(DD-MM) DATA_VALOR(DD-MM)
+// DESCRITIVO VALOR(signed) SALDO. Signed amount from running-balance delta.
+export function parseSantanderPdf(text: string): ParsedRow[] {
+  const flat = text.replace(/ /g, ' ').replace(/\s+/g, ' ');
+  const per = flat.match(/PER[IÍ]ODO DE\s+(\d{4})-(\d{2})-(\d{2})/i);
+  const year = per ? Number(per[1]) : new Date().getFullYear();
+  const startMonth = per ? Number(per[2]) : 1;
+
+  const start = flat.search(/Saldo Inicial/i);
+  if (start < 0) return [];
+  const endRel = flat.slice(start).search(/Saldo Contabil[ií]stico Final|Saldo Final/i);
+  const region = endRel < 0 ? flat.slice(start) : flat.slice(start, start + endRel);
+
+  const seed = region.match(/Saldo Inicial\s*EUR\s*(\d{1,3}(?:\.\d{3})*,\d{2})/i);
+  let prev = seed ? ptPdfNum(seed[1]) : NaN;
+
+  const MONEY = /\d{1,3}(?:\.\d{3})*,\d{2}/g;
+  const D = String.raw`(?:0[1-9]|[12]\d|3[01])-(?:0[1-9]|1[0-2])`;      // DD-MM
+  const rowRe = new RegExp(`(${D})(${D})(.+?)(?=(?:${D})(?:${D})|Saldo |$)`, 'g');
+
+  const rows: ParsedRow[] = [];
+  let m: RegExpExecArray | null;
+  while ((m = rowRe.exec(region)) !== null) {
+    const day = Number(m[1].slice(0, 2));
+    const month = Number(m[1].slice(3, 5));
+    const rest = m[3];
+    const toks = rest.match(MONEY);
+    if (!toks || !toks.length) continue;
+    const saldo = ptPdfNum(toks[toks.length - 1]);
+    if (!isFinite(saldo)) continue;
+    if (!isFinite(prev)) { prev = saldo; continue; }
+    const signed = Math.round((saldo - prev) * 100) / 100;
+    prev = saldo;
+    if (signed === 0) continue;
+    const cut = rest.indexOf(toks[0]);
+    const desc = (cut > 0 ? rest.slice(0, cut) : rest).trim();
+    const yr = month < startMonth ? year + 1 : year;
+    rows.push({ date: `${yr}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`, signed, desc });
   }
   return rows;
 }

@@ -4,6 +4,7 @@ import { supabase } from '../../lib/supabase';
 import { EXPENSE_TAGS, validateTag, countsInTotals, tagColor } from '../../lib/expenses';
 import ImportModal from '../../components/ImportModal';
 import { useHideBalance } from '../../lib/useHideBalance';
+import { Search } from 'lucide-react';
 
 interface Expense {
   id: string;
@@ -35,6 +36,7 @@ export default function ExpensesPage() {
   const [sort, setSort] = useState<{ key: SortKey; dir: 'asc' | 'desc' }>({ key: 'date', dir: 'desc' });
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
+  const [similarFor, setSimilarFor] = useState<Expense | null>(null);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [bulking, setBulking] = useState(false);
 
@@ -181,16 +183,24 @@ export default function ExpensesPage() {
   return (
     <main className="max-w-7xl mx-auto p-6 md:p-8">
       {imp === 'santander' && (
-        <ImportModal title="Import Santander" description="Upload a Santander movements CSV export"
-          endpoint="/api/import/expenses/santander" accept=".csv"
-          hint="Santander → Conta → Movimentos → export as CSV (semicolon-separated)."
+        <ImportModal title="Import Santander" description="Upload a Santander statement (PDF) or movements CSV"
+          endpoint="/api/import/expenses/santander" accept=".pdf,.csv"
+          hint="Santander → Conta → Extrato (PDF) or Movimentos → export as CSV. PDF consolidated statement supported."
           onClose={() => setImp(null)} onImported={() => { setImp(null); fetchRows(); }} />
       )}
       {imp === 'activobank' && (
-        <ImportModal title="Import ActivoBank" description="Upload an ActivoBank account history CSV"
-          endpoint="/api/import/expenses/activobank" accept=".csv"
-          hint="ActivoBank → Conta → Histórico → export as CSV."
+        <ImportModal title="Import ActivoBank" description="Upload an ActivoBank statement (PDF) or history CSV"
+          endpoint="/api/import/expenses/activobank" accept=".pdf,.csv"
+          hint="ActivoBank → Conta → Extrato (PDF) or Histórico → export as CSV. PDF combined statement supported."
           onClose={() => setImp(null)} onImported={() => { setImp(null); fetchRows(); }} />
+      )}
+      {similarFor && (
+        <SimilarExpensesPanel
+          row={similarFor} rows={rows} money={money}
+          onClose={() => setSimilarFor(null)}
+          onRetag={(tag) => { updateTag(similarFor.id, tag); setSimilarFor(null); }}
+          onSearch={(q) => { setQuery(q); setMonth(''); setTagFilter('All'); setSimilarFor(null); }}
+        />
       )}
 
       <div className="flex items-start justify-between mb-8 gap-4">
@@ -316,7 +326,7 @@ export default function ExpensesPage() {
                   const c = tagColor(r.tag);
                   const sel = selected.has(r.id);
                   return (
-                  <tr key={r.id} className={`hover:bg-gray-50 dark:hover:bg-surface-3 ${sel ? 'bg-indigo-50/60 dark:bg-gold-500/5' : ''} ${countsInTotals(r.tag) ? '' : 'opacity-45'}`} title={countsInTotals(r.tag) ? undefined : 'Excluded from expense/income totals'}>
+                  <tr key={r.id} className={`group hover:bg-gray-50 dark:hover:bg-surface-3 ${sel ? 'bg-indigo-50/60 dark:bg-gold-500/5' : ''} ${countsInTotals(r.tag) ? '' : 'opacity-45'}`} title={countsInTotals(r.tag) ? undefined : 'Excluded from expense/income totals'}>
                     <td className="p-3">
                       <input type="checkbox" aria-label="Select row" checked={sel} onChange={() => toggleRow(r.id)}
                         className="accent-indigo-600 dark:accent-gold-500 cursor-pointer" />
@@ -349,7 +359,14 @@ export default function ExpensesPage() {
                     <td className={`p-3 text-right font-num whitespace-nowrap ${Number(r.amount) < 0 ? 'text-gray-900 dark:text-ink' : 'text-green-600 dark:text-gain'}`}>
                       {Number(r.amount) < 0 ? `−${money(-Number(r.amount))}` : `+${money(Number(r.amount))}`}
                     </td>
-                    <td className="p-3 text-right"><button onClick={() => remove(r.id)} className="text-gray-300 hover:text-red-500" title="Delete">✕</button></td>
+                    <td className="p-3 text-right whitespace-nowrap">
+                      <button onClick={() => setSimilarFor(r)}
+                        className="opacity-0 group-hover:opacity-100 focus:opacity-100 text-gray-300 dark:text-gray-600 hover:text-indigo-500 dark:hover:text-gold-400 mr-2 transition-opacity"
+                        title="Find similar expenses">
+                        <Search size={14} className="inline" />
+                      </button>
+                      <button onClick={() => remove(r.id)} className="text-gray-300 hover:text-red-500" title="Delete">✕</button>
+                    </td>
                   </tr>
                   );
                 })}
@@ -364,6 +381,91 @@ export default function ExpensesPage() {
 }
 
 const inp = 'bg-gray-50 dark:bg-surface-2 border border-gray-300 dark:border-line text-sm rounded-lg px-2 py-1.5 text-gray-900 dark:text-white outline-none focus:border-indigo-500 dark:focus:border-gold-500';
+
+// Strip trailing ID-like tokens (containing a digit) so "WWW.AMAZON NO7P501T4"
+// → "WWW.AMAZON", giving a reusable merchant key for matching.
+function merchantKey(m: string | null): string {
+  if (!m) return '';
+  const words = m.trim().split(/\s+/).filter(Boolean);
+  while (words.length > 1 && /\d/.test(words[words.length - 1])) words.pop();
+  return words.join(' ');
+}
+
+// On-demand similar-expense finder. Operates on already-loaded rows (no DB query).
+function SimilarExpensesPanel({ row, rows, money, onClose, onRetag, onSearch }: {
+  row: Expense; rows: Expense[]; money: (n: number) => string;
+  onClose: () => void; onRetag: (tag: string) => void; onSearch: (q: string) => void;
+}) {
+  const [q, setQ] = useState(() => merchantKey(row.merchant));
+  const [from, setFrom] = useState('');
+  const [to, setTo] = useState('');
+
+  const matches = useMemo(() => {
+    const key = q.trim().toLowerCase();
+    return rows.filter((r) => {
+      if (key && !(r.merchant ?? '').toLowerCase().includes(key)) return false;
+      if (from && r.date < from) return false;
+      if (to && r.date > to) return false;
+      return true;
+    });
+  }, [rows, q, from, to]);
+
+  const breakdown = useMemo(() => {
+    const m: Record<string, { label: string; count: number; total: number }> = {};
+    for (const r of matches) {
+      if (!m[r.tag]) m[r.tag] = { label: r.tag_label ?? r.tag, count: 0, total: 0 };
+      m[r.tag].count++; m[r.tag].total += Math.abs(Number(r.amount));
+    }
+    return Object.entries(m).map(([tag, v]) => ({ tag, ...v })).sort((a, b) => b.count - a.count);
+  }, [matches]);
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-start justify-center p-4 pt-20 bg-black/50 backdrop-blur-sm" onClick={onClose}>
+      <div onClick={(e) => e.stopPropagation()} className="w-full max-w-md bg-white dark:bg-surface border border-gray-200 dark:border-line rounded-2xl p-5 shadow-xl">
+        <div className="flex items-start justify-between gap-3 mb-3">
+          <div>
+            <h3 className="text-lg font-bold">Similar expenses</h3>
+            <p className="text-xs text-gray-400 dark:text-ink-muted">Tags used by matching merchants — no extra queries.</p>
+          </div>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-700 dark:hover:text-ink">✕</button>
+        </div>
+
+        <label className="block mb-2">
+          <span className="text-[11px] text-gray-400">Merchant contains</span>
+          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="e.g. WWW.AMAZON" className={`${inp} w-full mt-1`} />
+        </label>
+        <div className="grid grid-cols-2 gap-2 mb-3">
+          <label className="block"><span className="text-[11px] text-gray-400">From</span><input type="date" value={from} onChange={(e) => setFrom(e.target.value)} className={`${inp} w-full mt-1`} /></label>
+          <label className="block"><span className="text-[11px] text-gray-400">To</span><input type="date" value={to} onChange={(e) => setTo(e.target.value)} className={`${inp} w-full mt-1`} /></label>
+        </div>
+
+        <div className="flex items-center justify-between text-sm mb-2">
+          <span className="text-gray-500 dark:text-ink-muted">{matches.length} match{matches.length !== 1 ? 'es' : ''}</span>
+          <button onClick={() => onSearch(q.trim())} className="label-caps px-2.5 py-1 rounded-md bg-indigo-600 dark:bg-gold-500 text-white dark:text-black">Show in list</button>
+        </div>
+
+        <div className="max-h-64 overflow-y-auto">
+          {breakdown.length === 0 ? (
+            <p className="text-sm text-gray-400 p-2">No matches.</p>
+          ) : breakdown.map((t) => {
+            const col = tagColor(t.tag);
+            return (
+              <button key={t.tag} onClick={() => onRetag(t.label)} title={`Re-tag this expense as ${t.label}`}
+                className="w-full flex items-center justify-between gap-2 px-2 py-1.5 rounded-lg hover:bg-gray-50 dark:hover:bg-surface-3">
+                <span className="flex items-center gap-2 min-w-0">
+                  <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: col.fg }} />
+                  <span className="truncate text-gray-700 dark:text-ink">{t.label}</span>
+                </span>
+                <span className="text-xs text-gray-400 dark:text-ink-muted whitespace-nowrap">{t.count}× · {money(t.total)}</span>
+              </button>
+            );
+          })}
+        </div>
+        <p className="text-[11px] text-gray-400 dark:text-ink-faint mt-3">Click a tag to re-tag <strong>this</strong> expense. Refine merchant/dates if the name has a unique ID.</p>
+      </div>
+    </div>
+  );
+}
 
 function TagEditor({ current, onSave, onCancel, saveLabel }: { current: string; onSave: (t: string) => void; onCancel: () => void; saveLabel?: string }) {
   const isPreset = (EXPENSE_TAGS as readonly string[]).includes(current);
