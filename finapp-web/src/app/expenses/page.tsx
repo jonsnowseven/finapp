@@ -1,8 +1,9 @@
 'use client';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { supabase } from '../../lib/supabase';
-import { EXPENSE_TAGS, validateTag, countsInTotals, tagColor } from '../../lib/expenses';
+import { EXPENSE_TAGS, validateTag, countsInTotals, tagColor, merchantKey } from '../../lib/expenses';
 import ImportModal from '../../components/ImportModal';
+import ExpensesOverview from '../../components/ExpensesOverview';
 import { useHideBalance } from '../../lib/useHideBalance';
 import { Search } from 'lucide-react';
 
@@ -27,7 +28,12 @@ const thisMonth = () => new Date().toISOString().slice(0, 7);
 const today = () => new Date().toISOString().slice(0, 10);
 
 export default function ExpensesPage() {
-  const { money } = useHideBalance();
+  const { money, hidden } = useHideBalance();
+  const [view, setView] = useState<'list' | 'overview'>('list');
+  const [showDel, setShowDel] = useState(false);
+  const [delFrom, setDelFrom] = useState('');
+  const [delTo, setDelTo] = useState('');
+  const [delBusy, setDelBusy] = useState(false);
   const [rows, setRows] = useState<Expense[]>([]);
   const [loading, setLoading] = useState(true);
   const [month, setMonth] = useState(thisMonth());
@@ -175,6 +181,21 @@ export default function ExpensesPage() {
     } finally { setBulking(false); }
   }
 
+  async function deleteRange() {
+    if (!delFrom || !delTo) { setErr('Pick both a From and To date.'); return; }
+    if (delFrom > delTo) { setErr('From date must be before To date.'); return; }
+    const n = rows.filter((r) => r.date >= delFrom && r.date <= delTo).length;
+    if (n === 0) { setErr('No expenses in that range.'); return; }
+    if (!confirm(`Delete ${n} expense${n !== 1 ? 's' : ''} dated ${delFrom} to ${delTo}? This cannot be undone.`)) return;
+    setDelBusy(true);
+    try {
+      const res = await fetch(`/api/expenses?from=${delFrom}&to=${delTo}`, { method: 'DELETE' });
+      const j = await res.json();
+      if (!res.ok) { setErr(j.error ?? 'Delete failed'); return; }
+      setErr(null); setShowDel(false); setSelected(new Set()); fetchRows();
+    } finally { setDelBusy(false); }
+  }
+
   async function remove(id: string) {
     await fetch(`/api/expenses?id=${id}`, { method: 'DELETE' });
     fetchRows();
@@ -209,11 +230,22 @@ export default function ExpensesPage() {
           <p className="text-gray-500 dark:text-gray-400 text-sm">Track cashflow by tag. Import bank CSVs — all rows kept; transfers/investments/savings excluded from totals. Click a tag to re-assign it.</p>
         </div>
         <div className="flex items-center gap-2 mt-1 shrink-0">
+          <div className="flex rounded-xl border border-gray-300 dark:border-line overflow-hidden mr-1">
+            {(['list', 'overview'] as const).map((v) => (
+              <button key={v} onClick={() => setView(v)}
+                className={`px-3 py-2 text-sm font-medium capitalize transition-colors ${view === v ? 'bg-indigo-600 dark:bg-gold-500 text-white dark:text-black' : 'text-gray-600 dark:text-ink-muted hover:bg-gray-50 dark:hover:bg-surface-3'}`}>
+                {v}
+              </button>
+            ))}
+          </div>
           <button onClick={() => setImp('santander')} className="px-3 py-2 rounded-xl border border-gray-300 dark:border-line text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-surface-3">Import Santander</button>
           <button onClick={() => setImp('activobank')} className="px-3 py-2 rounded-xl border border-gray-300 dark:border-line text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-surface-3">Import ActivoBank</button>
         </div>
       </div>
 
+      {view === 'overview' && <ExpensesOverview rows={rows} money={money} hidden={hidden} />}
+
+      {view === 'list' && (<>
       {/* Add form */}
       <div className="bg-white dark:bg-surface p-4 rounded-2xl border border-gray-200 dark:border-line mb-6">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 items-end">
@@ -265,6 +297,23 @@ export default function ExpensesPage() {
           <span>Income <strong className="font-num text-green-600 dark:text-gain">{money(incomeTotal)}</strong></span>
           <span>Net <strong className="font-num text-gray-900 dark:text-ink">{money(incomeTotal - expensesTotal)}</strong></span>
         </span>
+      </div>
+
+      {/* Delete a date range */}
+      <div className="flex justify-end mb-4 -mt-1">
+        {!showDel ? (
+          <button onClick={() => { setShowDel(true); setErr(null); setDelFrom(''); setDelTo(''); }}
+            className="text-xs text-gray-400 hover:text-red-500 dark:hover:text-loss">Delete a date range…</button>
+        ) : (
+          <div className="flex flex-wrap items-end gap-2 p-3 rounded-xl border border-red-300 dark:border-loss/40 bg-red-50/60 dark:bg-loss/5">
+            <label className="text-xs"><span className="label-caps text-gray-400 dark:text-ink-muted block mb-1">From</span><input type="date" value={delFrom} onChange={(e) => setDelFrom(e.target.value)} className={inp} /></label>
+            <label className="text-xs"><span className="label-caps text-gray-400 dark:text-ink-muted block mb-1">To</span><input type="date" value={delTo} onChange={(e) => setDelTo(e.target.value)} className={inp} /></label>
+            <button onClick={deleteRange} disabled={delBusy}
+              className="px-3 py-1.5 rounded-lg bg-red-600 text-white text-sm font-semibold hover:bg-red-700 disabled:opacity-50">{delBusy ? 'Deleting…' : 'Delete range'}</button>
+            <button onClick={() => { setShowDel(false); setErr(null); }}
+              className="px-3 py-1.5 rounded-lg border border-gray-300 dark:border-line text-sm text-gray-600 dark:text-ink-muted hover:bg-gray-50 dark:hover:bg-surface-3">Cancel</button>
+          </div>
+        )}
       </div>
 
       {loading ? (
@@ -376,20 +425,12 @@ export default function ExpensesPage() {
           </div>
         </div>
       )}
+      </>)}
     </main>
   );
 }
 
 const inp = 'bg-gray-50 dark:bg-surface-2 border border-gray-300 dark:border-line text-sm rounded-lg px-2 py-1.5 text-gray-900 dark:text-white outline-none focus:border-indigo-500 dark:focus:border-gold-500';
-
-// Strip trailing ID-like tokens (containing a digit) so "WWW.AMAZON NO7P501T4"
-// → "WWW.AMAZON", giving a reusable merchant key for matching.
-function merchantKey(m: string | null): string {
-  if (!m) return '';
-  const words = m.trim().split(/\s+/).filter(Boolean);
-  while (words.length > 1 && /\d/.test(words[words.length - 1])) words.pop();
-  return words.join(' ');
-}
 
 // On-demand similar-expense finder. Operates on already-loaded rows (no DB query).
 function SimilarExpensesPanel({ row, rows, money, onClose, onRetag, onSearch }: {

@@ -67,16 +67,28 @@ export async function PATCH(request: Request) {
   }
 }
 
-// Delete by ?id=
+// Delete by ?id=, or a date range ?from=YYYY-MM-DD&to=YYYY-MM-DD (inclusive).
 export async function DELETE(request: Request) {
   const guard = await requireApiUser();
   if (guard) return guard;
-  const id = new URL(request.url).searchParams.get('id');
-  if (!id) return NextResponse.json({ error: 'id required' }, { status: 400 });
+  const url = new URL(request.url);
+  const id = url.searchParams.get('id');
+  const from = url.searchParams.get('from');
+  const to = url.searchParams.get('to');
+  const isDate = (s: string | null) => !!s && /^\d{4}-\d{2}-\d{2}$/.test(s);
   try {
-    const { error } = await db().from('expenses').delete().eq('id', id);
-    if (error) throw error;
-    return NextResponse.json({ ok: true });
+    if (id) {
+      const { error } = await db().from('expenses').delete().eq('id', id);
+      if (error) throw error;
+      return NextResponse.json({ ok: true, deleted: 1 });
+    }
+    if (isDate(from) && isDate(to)) {
+      const { data, error } = await db().from('expenses')
+        .delete().gte('date', from!).lte('date', to!).select('id');
+      if (error) throw error;
+      return NextResponse.json({ ok: true, deleted: data?.length ?? 0 });
+    }
+    return NextResponse.json({ error: 'id, or from+to (YYYY-MM-DD) required' }, { status: 400 });
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 500 });
   }

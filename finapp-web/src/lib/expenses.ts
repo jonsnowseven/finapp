@@ -40,6 +40,15 @@ export const FIXED_TAGS = new Set([
   'education', 'subscriptions', 'taxes-fees', 'bank-charges',
 ]);
 
+// Strip trailing ID-like tokens (containing a digit) so "WWW.AMAZON NO7P501T4"
+// → "WWW.AMAZON", giving a reusable merchant key for matching/grouping.
+export function merchantKey(m: string | null): string {
+  if (!m) return '';
+  const words = m.trim().split(/\s+/).filter(Boolean);
+  while (words.length > 1 && /\d/.test(words[words.length - 1])) words.pop();
+  return words.join(' ');
+}
+
 export interface ExpenseRow { date: string; amount: number; tag: string; tag_label: string | null }
 export interface ExpenseSummary {
   months: number;
