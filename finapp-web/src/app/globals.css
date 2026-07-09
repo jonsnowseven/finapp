@@ -2,6 +2,17 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Brand accent palettes. --brand-* are "R G B" triplets consumed by the gold-*
+   Tailwind colors. Default (gold) lives on :root; each theme overrides via
+   [data-accent]. Switch by setting document.documentElement.dataset.accent. */
+:root,
+[data-accent="gold"]     { --brand-400: 255 225 109; --brand-500: 255 215 0;  --brand-600: 233 196 0;  --brand-700: 185 158 0; }
+[data-accent="emerald"]  { --brand-400: 110 231 183; --brand-500: 16 185 129; --brand-600: 5 150 105;  --brand-700: 4 120 87; }
+[data-accent="sapphire"] { --brand-400: 96 165 250;  --brand-500: 59 130 246; --brand-600: 37 99 235;  --brand-700: 29 78 216; }
+[data-accent="crimson"]  { --brand-400: 251 113 133; --brand-500: 244 63 94;  --brand-600: 225 29 72;  --brand-700: 190 18 60; }
+[data-accent="violet"]   { --brand-400: 167 139 250; --brand-500: 139 92 246; --brand-600: 124 58 237; --brand-700: 109 40 217; }
+[data-accent="platinum"] { --brand-400: 226 232 240; --brand-500: 203 213 225; --brand-600: 148 163 184; --brand-700: 100 116 139; }
+
 @layer base {
   /* Headings & large numbers use the display face; body stays Inter. */
   h1, h2, h3, h4 {

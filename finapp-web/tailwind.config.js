@@ -7,12 +7,13 @@ module.exports = {
   theme: {
     extend: {
       colors: {
-        // Brand gold (Midnight Gold system). 500 = bright institutional gold.
+        // Brand accent — remapped at runtime via --brand-* CSS vars so the
+        // whole app re-themes (see globals.css [data-accent]). Default = gold.
         gold: {
-          400: '#ffe16d', // highlights / hover text
-          500: '#ffd700', // brand + primary CTA
-          600: '#e9c400', // charts / dim brand
-          700: '#b99e00', // pressed
+          400: 'rgb(var(--brand-400) / <alpha-value>)',
+          500: 'rgb(var(--brand-500) / <alpha-value>)',
+          600: 'rgb(var(--brand-600) / <alpha-value>)',
+          700: 'rgb(var(--brand-700) / <alpha-value>)',
         },
         // Semantic dark surfaces (tonal layering, not shadows).
         void: '#0a0a0a',          // app / sidebar background

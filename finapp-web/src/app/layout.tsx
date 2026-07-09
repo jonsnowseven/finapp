@@ -1,8 +1,7 @@
 import './globals.css';
 import { Hanken_Grotesk, Inter, JetBrains_Mono } from 'next/font/google';
 import { ThemeProvider } from '../components/ThemeProvider';
-import Navbar from '../components/Navbar';
-import MonthlyReminder from '../components/MonthlyReminder';
+import AppShell from '../components/AppShell';
 
 // Midnight Gold typography: Hanken Grotesk (display/numbers), Inter (body),
 // JetBrains Mono (labels/ISINs). Self-hosted by next/font — no external CDN.
@@ -22,6 +21,10 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" suppressHydrationWarning className={`${display.variable} ${body.variable} ${mono.variable}`}>
+      <head>
+        {/* Apply the saved brand accent before paint to avoid a flash. */}
+        <script dangerouslySetInnerHTML={{ __html: `try{document.documentElement.dataset.accent=localStorage.getItem('finapp_accent')||'gold'}catch(e){}` }} />
+      </head>
       <body className="min-h-screen bg-gray-50 dark:bg-void text-gray-900 dark:text-ink font-sans antialiased transition-colors duration-200">
         <ThemeProvider
           attribute="class"
@@ -29,9 +32,7 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          <Navbar />
-          <MonthlyReminder />
-          {children}
+          <AppShell>{children}</AppShell>
         </ThemeProvider>
       </body>
     </html>
