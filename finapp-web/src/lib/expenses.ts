@@ -19,6 +19,10 @@ export const EXPENSE_TAGS = [
   'Pets',
   'Gifts & Donations',
   'Solidarity',
+  // Income-side (importer-generated) tags, now selectable in the dropdowns.
+  'Salary',
+  'Refund',
+  'Income',
   'Investments',            // excluded from expense/income totals (see NON_CASHFLOW_TAGS)
   'Other',
 ] as const;
