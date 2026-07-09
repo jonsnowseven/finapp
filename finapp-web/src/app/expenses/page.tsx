@@ -26,6 +26,13 @@ const SORTED_TAGS = [...EXPENSE_TAGS].sort((a, b) => a.localeCompare(b));
 
 const thisMonth = () => new Date().toISOString().slice(0, 7);
 const today = () => new Date().toISOString().slice(0, 10);
+// Shift a 'YYYY-MM' by n months (empty = all → start from the current month).
+const shiftMonth = (m: string, n: number) => {
+  const base = /^\d{4}-\d{2}$/.test(m) ? m : thisMonth();
+  const [y, mo] = base.split('-').map(Number);
+  const d = new Date(y, mo - 1 + n, 1);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+};
 
 export default function ExpensesPage() {
   const { money, hidden } = useHideBalance();
@@ -271,10 +278,16 @@ export default function ExpensesPage() {
 
       {/* Filters + totals */}
       <div className="flex flex-wrap items-center gap-4 mb-4">
-        <label className="flex items-center gap-2 text-sm">
+        <div className="flex items-center gap-2 text-sm">
           <span className="label-caps text-gray-400 dark:text-ink-muted">Month</span>
-          <input type="month" value={month} onChange={(e) => setMonth(e.target.value)} className={inp} />
-        </label>
+          <div className="flex items-center">
+            <button onClick={() => setMonth((m) => shiftMonth(m, -1))} title="Previous month"
+              className="px-2 py-1.5 rounded-l-lg border border-gray-300 dark:border-line text-gray-600 dark:text-ink-muted hover:bg-gray-50 dark:hover:bg-surface-3">‹</button>
+            <input type="month" value={month} onChange={(e) => setMonth(e.target.value)} className={`${inp} rounded-none border-x-0`} />
+            <button onClick={() => setMonth((m) => shiftMonth(m, 1))} title="Next month"
+              className="px-2 py-1.5 rounded-r-lg border border-gray-300 dark:border-line text-gray-600 dark:text-ink-muted hover:bg-gray-50 dark:hover:bg-surface-3">›</button>
+          </div>
+        </div>
         <label className="flex items-center gap-2 text-sm">
           <span className="label-caps text-gray-400 dark:text-ink-muted">Tag</span>
           <select value={tagFilter} onChange={(e) => setTagFilter(e.target.value)} className={inp}>

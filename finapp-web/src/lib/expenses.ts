@@ -18,6 +18,8 @@ export const EXPENSE_TAGS = [
   'Kids / Family',
   'Pets',
   'Gifts & Donations',
+  'Solidarity',
+  'Investments',            // excluded from expense/income totals (see NON_CASHFLOW_TAGS)
   'Other',
 ] as const;
 
