@@ -43,7 +43,8 @@ export async function middleware(request: NextRequest) {
   const isPublicPath =
     pathname.startsWith('/login') ||
     pathname.startsWith('/auth') ||
-    pathname.startsWith('/unauthorized');
+    pathname.startsWith('/unauthorized') ||
+    pathname.startsWith('/api/cron');   // self-authenticates via CRON_SECRET
 
   if (!user && !isPublicPath) {
     // API → JSON 401; pages → redirect to login
