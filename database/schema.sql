@@ -141,6 +141,25 @@ revoke all on public.lego_sets from anon;
 grant select on public.lego_sets to authenticated;
 grant all on public.lego_sets to service_role;
 
+-- Forecast inputs (profile / FIRE / mortgage) — synced across devices.
+-- Single shared row (id=true) since the app is single-user.
+create table if not exists forecast_settings (
+  id boolean primary key default true,
+  profile jsonb,
+  fire jsonb,
+  mortgage jsonb,
+  rows jsonb,                        -- per-entity assumption overrides
+  updated_at timestamp with time zone default timezone('utc'::text, now()),
+  constraint forecast_settings_singleton check (id)
+);
+alter table forecast_settings enable row level security;
+drop policy if exists "authenticated read forecast_settings" on public.forecast_settings;
+create policy "authenticated read forecast_settings"
+  on public.forecast_settings for select to authenticated using (true);
+revoke all on public.forecast_settings from anon;
+grant select on public.forecast_settings to authenticated;
+grant all on public.forecast_settings to service_role;
+
 alter table valuations enable row level security;
 drop policy if exists "authenticated read valuations" on public.valuations;
 create policy "authenticated read valuations"

@@ -1,7 +1,7 @@
 'use client';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-  AreaChart, Area, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+  AreaChart, Area, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine,
 } from 'recharts';
 import { supabase } from '../../lib/supabase';
 import { entityHex, typeSign, defaultReturn, defaultTax, defaultTer, DEFAULT_MONTHLY_BUY } from '../../lib/entities';
@@ -62,6 +62,7 @@ interface Fire {
   retYears: number;          // years to traditional retirement (for Coast FIRE)
 }
 const FIRE_KEY = 'finapp_fire';
+const ROWS_KEY = 'finapp_forecast_rows';   // per-entity assumption overrides
 
 function monthLabel(m: number): string {
   const d = new Date();
@@ -71,12 +72,27 @@ function monthLabel(m: number): string {
 
 export default function ForecastPage() {
   const { hidden } = useHideBalance();
-  const [rows, setRows] = useState<Assumption[]>([]);
+  // Base rows are derived from the ledger; user edits are stored as per-entity
+  // overrides (persisted + synced) and merged over the base.
+  const [baseRows, setBaseRows] = useState<Assumption[]>([]);
+  const [rowOverrides, setRowOverrides] = useState<Record<string, Partial<Assumption>>>({});
+  const rows = useMemo(
+    () => baseRows.map((r) => ({ ...r, ...rowOverrides[r.entity] })),
+    [baseRows, rowOverrides],
+  );
   const [years, setYears] = useState(20);
+  const [history, setHistory] = useState<{ date: string; total: number }[]>([]);
   const [loading, setLoading] = useState(true);
   const [mortgage, setMortgage] = useState<Mortgage>({ balance: 0, annualPct: 3.5, payment: 0 });
 
-  // Mortgage has no DB source — persist its inputs locally.
+  // Sync forecast inputs (profile/fire/mortgage) to Supabase so they follow the
+  // user across devices. localStorage is kept as a same-device cache.
+  const postSettings = (patch: { profile?: unknown; fire?: unknown; mortgage?: unknown; rows?: unknown }) => {
+    fetch('/api/forecast-settings', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(patch),
+    }).catch(() => { /* offline — localStorage still holds it */ });
+  };
+
   useEffect(() => {
     const s = localStorage.getItem(MORTGAGE_KEY);
     if (s) { try { setMortgage(JSON.parse(s)); } catch { /* ignore */ } }
@@ -85,6 +101,7 @@ export default function ForecastPage() {
     setMortgage((prev) => {
       const next = { ...prev, [field]: value };
       localStorage.setItem(MORTGAGE_KEY, JSON.stringify(next));
+      postSettings({ mortgage: next });
       return next;
     });
   }
@@ -98,6 +115,7 @@ export default function ForecastPage() {
     setFire((prev) => {
       const next = { ...prev, [field]: value };
       localStorage.setItem(FIRE_KEY, JSON.stringify(next));
+      postSettings({ fire: next });
       return next;
     });
   }
@@ -128,7 +146,42 @@ export default function ForecastPage() {
   }, []);
   function persistProfile(next: { birthDate: string; netSalary: number; salaryPeriod: 'month' | 'year'; pensionTaxPct: number }) {
     localStorage.setItem(PROFILE_KEY, JSON.stringify(next));
+    postSettings({ profile: next });
   }
+
+  // Seed row overrides from localStorage immediately (same-device cache).
+  useEffect(() => {
+    const s = localStorage.getItem(ROWS_KEY);
+    if (s) { try { setRowOverrides(JSON.parse(s)); } catch { /* ignore */ } }
+  }, []);
+
+  // Authoritative load from Supabase (overrides the localStorage seed above).
+  useEffect(() => {
+    supabase.from('forecast_settings').select('profile,fire,mortgage,rows').limit(1).maybeSingle()
+      .then(({ data }) => {
+        if (!data) {
+          // First run: seed the DB from this device's localStorage (if any).
+          const read = (k: string) => { try { return JSON.parse(localStorage.getItem(k) || 'null'); } catch { return null; } };
+          const profile = read(PROFILE_KEY), fire = read(FIRE_KEY), mortgage = read(MORTGAGE_KEY), rows = read(ROWS_KEY);
+          if (profile || fire || mortgage || rows) postSettings({ ...(profile && { profile }), ...(fire && { fire }), ...(mortgage && { mortgage }), ...(rows && { rows }) });
+          return;
+        }
+        if (data.rows) setRowOverrides((p) => ({ ...p, ...data.rows }));
+        if (data.fire) setFire((p) => ({ ...p, ...data.fire }));
+        if (data.mortgage) setMortgage((p) => ({ ...p, ...data.mortgage }));
+        const p = data.profile;
+        if (p) {
+          if (p.birthDate) {
+            setBirthDate(p.birthDate);
+            const age = ageFrom(p.birthDate);
+            if (age != null) setYears(Math.min(40, Math.max(1, Math.round(PT_RETIREMENT_AGE - age))));
+          }
+          if (typeof p.netSalary === 'number') setNetSalary(p.netSalary);
+          if (p.salaryPeriod === 'month' || p.salaryPeriod === 'year') setSalaryPeriod(p.salaryPeriod);
+          if (typeof p.pensionTaxPct === 'number') setPensionTaxPct(p.pensionTaxPct);
+        }
+      });
+  }, []);
   function updateBirthDate(bd: string) {
     setBirthDate(bd);
     persistProfile({ birthDate: bd, netSalary, salaryPeriod, pensionTaxPct });
@@ -146,6 +199,12 @@ export default function ForecastPage() {
     const { data: txs } = await supabase.from('transactions').select('*');
     const { data: vals } = await supabase
       .from('valuations').select('*').order('as_of_date', { ascending: true });
+    // Snapshot history = actual net worth over time; the latest one holds today's
+    // LIVE market value per entity (valuation-or-invested) for the Start values.
+    const { data: snaps } = await supabase
+      .from('snapshots').select('as_of, total, by_entity').order('as_of', { ascending: true });
+    setHistory((snaps ?? []).map((s) => ({ date: s.as_of as string, total: Number(s.total) })));
+    const live: Record<string, number> = (snaps?.length ? (snaps[snaps.length - 1].by_entity as Record<string, number>) : {}) ?? {};
 
     // Pension scenarios (optional) — default to the legal-age value if present
     const { data: pen } = await supabase.from('pension_sim').select('scenario, gross, title');
@@ -178,9 +237,10 @@ export default function ForecastPage() {
     for (const v of vals ?? []) valByEntity[v.entity] = Number(v.value); // ascending → last wins
 
     const entities = Array.from(new Set(txs.map((t) => t.entity))).sort();
-    setRows(entities.map((e) => ({
+    setBaseRows(entities.map((e) => ({
       entity: e,
-      start: Math.round((valByEntity[e] ?? net[e] ?? 0) * 100) / 100,
+      // Prefer live market value (latest snapshot), then statement valuation, then cost basis.
+      start: Math.round(((live[e] ?? valByEntity[e] ?? net[e]) || 0) * 100) / 100,
       monthly: DEFAULT_MONTHLY_BUY[e] ?? Math.round(((recent[e] ?? 0) / MONTHS_BACK) * 100) / 100,
       annualPct: defaultReturn(e),
       terPct: defaultTer(e),
@@ -191,8 +251,24 @@ export default function ForecastPage() {
 
   useEffect(() => { load().catch(() => setLoading(false)); }, [load]);
 
+  // Edits are live (recompute the projection) but NOT persisted — Save does that.
+  const [rowsDirty, setRowsDirty] = useState(false);
+  const [rowsSaved, setRowsSaved] = useState(false);
   function update(entity: string, field: keyof Assumption, value: number) {
-    setRows((prev) => prev.map((r) => (r.entity === entity ? { ...r, [field]: value } : r)));
+    setRowOverrides((prev) => ({ ...prev, [entity]: { ...prev[entity], [field]: value } }));
+    setRowsDirty(true); setRowsSaved(false);
+  }
+  function saveRows() {
+    localStorage.setItem(ROWS_KEY, JSON.stringify(rowOverrides));
+    postSettings({ rows: rowOverrides });
+    setRowsDirty(false); setRowsSaved(true);
+    setTimeout(() => setRowsSaved(false), 2000);
+  }
+  function resetRows() {
+    setRowOverrides({});
+    localStorage.removeItem(ROWS_KEY);
+    postSettings({ rows: {} });
+    setRowsDirty(false);
   }
 
   // Month-by-month projection. value_{m+1} = value_m * (1 + r/12) + monthly
@@ -301,6 +377,21 @@ export default function ForecastPage() {
 
   const startTotal = rows.reduce((a, r) => a + r.start, 0);
   const monthlyTotal = rows.reduce((a, r) => a + r.monthly, 0);
+
+  // Continuous timeline: actual net worth (snapshots) → today → projection.
+  const todayIso = new Date().toISOString().slice(0, 10);
+  const timeline = useMemo(() => {
+    const pts: { date: string; actual?: number; forecast?: number }[] =
+      history.map((s) => ({ date: s.date, actual: s.total }));
+    const now = new Date();
+    for (let m = 0; m <= years * 12; m += m < 12 ? 1 : 3) {   // monthly first year, then quarterly
+      const d = new Date(now.getFullYear(), now.getMonth() + m, 1);
+      pts.push({ date: d.toISOString().slice(0, 10), forecast: Math.round(rows.reduce((a, r) => a + projectGross(r, m), 0)) });
+    }
+    // Bridge: anchor the projection start to today's actual value.
+    pts.push({ date: todayIso, actual: Math.round(startTotal), forecast: Math.round(startTotal) });
+    return pts.sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
+  }, [history, rows, years, startTotal, todayIso]);
   const contributed = startTotal + monthlyTotal * years * 12;
   const endNet = rows.reduce((a, r) => a + netAt(r, years * 12), 0);   // after PT tax
   const growthNet = endNet - contributed;
@@ -381,7 +472,33 @@ export default function ForecastPage() {
             </div>
           </div>
 
-          {/* Chart */}
+          {/* History + Forecast timeline */}
+          <div className="bg-white dark:bg-surface p-6 rounded-2xl border border-gray-200 dark:border-line shadow-sm mb-6">
+            <div className="flex items-center justify-between mb-4">
+              <p className="label-caps text-gray-400 dark:text-ink-muted">Net worth · history &amp; forecast</p>
+              <div className="flex items-center gap-4 text-xs text-gray-500 dark:text-ink-muted">
+                <span className="flex items-center gap-1.5"><span className="inline-block w-3 h-0.5 rounded" style={{ backgroundColor: '#3ce36a' }} />Actual</span>
+                <span className="flex items-center gap-1.5"><span className="inline-block w-3 h-0.5 rounded border-t border-dashed" style={{ borderColor: 'rgb(var(--brand-500))' }} />Forecast</span>
+              </div>
+            </div>
+            <div className={hidden ? 'blur-sm select-none pointer-events-none' : ''}>
+              <ResponsiveContainer width="100%" height={260}>
+                <LineChart data={timeline} margin={{ top: 4, right: 8, left: 8, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(212,175,55,0.1)" />
+                  <XAxis dataKey="date" tick={{ fontSize: 11, fill: '#6b7280' }} tickLine={false} axisLine={false}
+                    minTickGap={48} tickFormatter={(d) => String(d).slice(0, 7)} />
+                  <YAxis tick={{ fontSize: 11, fill: '#6b7280' }} tickLine={false} axisLine={false} width={54} tickFormatter={(v) => `€${(v / 1000).toFixed(0)}k`} />
+                  <Tooltip contentStyle={{ background: '#171717', border: '1px solid #282828', borderRadius: 8, fontSize: 12 }}
+                    formatter={(v: number) => fmt(v)} labelFormatter={(l) => String(l)} />
+                  <ReferenceLine x={todayIso} stroke="#6b7280" strokeDasharray="4 4" label={{ value: 'today', fontSize: 10, fill: '#9a9488', position: 'insideTopRight' }} />
+                  <Line type="monotone" dataKey="actual" name="Actual" stroke="#3ce36a" strokeWidth={2} dot={false} connectNulls />
+                  <Line type="monotone" dataKey="forecast" name="Forecast" stroke="rgb(var(--brand-500))" strokeWidth={2} strokeDasharray="5 4" dot={false} connectNulls />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+
+          {/* Per-entity projection */}
           <div className="bg-white dark:bg-surface p-6 rounded-2xl border border-gray-200 dark:border-line shadow-sm mb-6">
             <div className={hidden ? 'blur-sm select-none pointer-events-none' : ''}>
             <ResponsiveContainer width="100%" height={320}>
@@ -448,6 +565,20 @@ export default function ForecastPage() {
           })()}
 
           {/* Assumptions table */}
+          <div className="flex items-center justify-between gap-3 mt-6 mb-3">
+            <p className="label-caps text-gray-400 dark:text-ink-muted">
+              Assumptions{rowsDirty && <span className="ml-2 normal-case tracking-normal text-amber-500">· unsaved changes</span>}
+            </p>
+            <div className="flex items-center gap-2">
+              {Object.keys(rowOverrides).length > 0 && (
+                <button onClick={resetRows} className="px-3 py-1.5 rounded-lg border border-gray-300 dark:border-line text-sm text-gray-600 dark:text-ink-muted hover:bg-gray-50 dark:hover:bg-surface-3">Reset</button>
+              )}
+              <button onClick={saveRows} disabled={!rowsDirty}
+                className="px-3 py-1.5 rounded-lg bg-indigo-600 dark:bg-gold-500 text-white dark:text-black text-sm font-semibold hover:bg-indigo-700 dark:hover:bg-gold-600 disabled:opacity-50">
+                {rowsSaved ? 'Saved ✓' : 'Save'}
+              </button>
+            </div>
+          </div>
           <div className="bg-white dark:bg-surface rounded-2xl border border-gray-200 dark:border-line overflow-x-auto">
             <table className="w-full text-left text-sm min-w-[640px]">
               <thead>
