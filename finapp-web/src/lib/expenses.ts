@@ -66,6 +66,8 @@ export interface ExpenseSummary {
   discretionaryPct: number | null;
   trendPct: number | null;           // recent-3mo avg vs prior-3mo avg
   runwayMonths: number | null;       // liquid savings ÷ avg monthly expenses
+  movements: { label: string; avgMonthly: number }[];  // non-cashflow (transfers/savings/investments), signed avg/mo
+  incomeCategories: { label: string; avg: number }[];  // income breakdown (counted inflows)
 }
 
 // Aggregate the expenses ledger into PII-free cashflow metrics over the last
@@ -82,15 +84,21 @@ export function summarizeExpenses(
   const monthKeys = new Set<string>();
   const byMonthExp: Record<string, number> = {};
   const byTag: Record<string, { label: string; total: number }> = {};
+  const nonCash: Record<string, { label: string; net: number }> = {};   // transfers/savings/investments
+  const incTag: Record<string, { label: string; total: number }> = {};  // income sources
   let totalExp = 0, totalInc = 0, fixedExp = 0;
 
   for (const r of rows) {
     const d = new Date(r.date);
     if (d < windowStart || d >= startCurMonth) continue;
-    if (!countsInTotals(r.tag)) continue;
     const key = r.date.slice(0, 7);
     monthKeys.add(key);
     const amt = Number(r.amount);
+    if (!countsInTotals(r.tag)) {
+      if (!nonCash[r.tag]) nonCash[r.tag] = { label: r.tag_label ?? r.tag, net: 0 };
+      nonCash[r.tag].net += amt;   // signed
+      continue;
+    }
     if (amt < 0) {
       const e = -amt;
       totalExp += e;
@@ -100,6 +108,8 @@ export function summarizeExpenses(
       if (FIXED_TAGS.has(r.tag)) fixedExp += e;
     } else if (amt > 0) {
       totalInc += amt;
+      if (!incTag[r.tag]) incTag[r.tag] = { label: r.tag_label ?? r.tag, total: 0 };
+      incTag[r.tag].total += amt;
     }
   }
 
@@ -123,7 +133,14 @@ export function summarizeExpenses(
 
   const runwayMonths = opts.liquidSavings && avgMonthlyExpenses > 0 ? opts.liquidSavings / avgMonthlyExpenses : null;
 
-  return { months, avgMonthlyExpenses, avgMonthlyIncome, savingsRate, categories, fixedPct, discretionaryPct, trendPct, runwayMonths };
+  const movements = Object.values(nonCash)
+    .map((v) => ({ label: v.label, avgMonthly: v.net / months }))
+    .sort((a, b) => Math.abs(b.avgMonthly) - Math.abs(a.avgMonthly));
+  const incomeCategories = Object.values(incTag)
+    .map((v) => ({ label: v.label, avg: v.total / months }))
+    .sort((a, b) => b.avg - a.avg);
+
+  return { months, avgMonthlyExpenses, avgMonthlyIncome, savingsRate, categories, fixedPct, discretionaryPct, trendPct, runwayMonths, movements, incomeCategories };
 }
 
 // Canonical slug: lowercase, collapse spaces, spaces→'-', drop stray punctuation.

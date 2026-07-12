@@ -96,8 +96,16 @@ export default function HomePage() {
       if (ex.trendPct != null) L.push(`- Expense trend (recent 3mo vs prior 3mo): ${ex.trendPct >= 0 ? '+' : ''}${(ex.trendPct * 100).toFixed(1)}%`);
       const top = ex.categories.slice(0, 6);
       if (top.length) {
-        L.push('- Top categories (share of spend):');
+        L.push('- Top spend categories (share of spend):');
         for (const c of top) L.push(`  - ${c.label}: ${(c.pct * 100).toFixed(0)}% (${fmt(c.avg)}/mo)`);
+      }
+      if (ex.incomeCategories.length) {
+        L.push('- Income by source (avg/mo):');
+        for (const c of ex.incomeCategories) L.push(`  - ${c.label}: ${fmt(c.avg)}/mo`);
+      }
+      if (ex.movements.length) {
+        L.push('- Movements excluded from spend/income (avg/mo, + in / − out):');
+        for (const m of ex.movements) L.push(`  - ${m.label}: ${m.avgMonthly >= 0 ? '+' : '−'}${fmt(Math.abs(m.avgMonthly))}/mo`);
       }
     }
 
