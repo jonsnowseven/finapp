@@ -141,6 +141,22 @@ revoke all on public.lego_sets from anon;
 grant select on public.lego_sets to authenticated;
 grant all on public.lego_sets to service_role;
 
+-- Daily Euribor readings per tenor (tracked by cron) to project the mortgage
+-- rate reset (previous-month average + spread).
+create table if not exists euribor_daily (
+  date date not null,
+  tenor text not null,             -- '1M' | '3M' | '6M' | '12M'
+  rate numeric not null,
+  primary key (date, tenor)
+);
+alter table euribor_daily enable row level security;
+drop policy if exists "authenticated read euribor_daily" on public.euribor_daily;
+create policy "authenticated read euribor_daily"
+  on public.euribor_daily for select to authenticated using (true);
+revoke all on public.euribor_daily from anon;
+grant select on public.euribor_daily to authenticated;
+grant all on public.euribor_daily to service_role;
+
 -- Forecast inputs (profile / FIRE / mortgage) — synced across devices.
 -- Single shared row (id=true) since the app is single-user.
 create table if not exists forecast_settings (

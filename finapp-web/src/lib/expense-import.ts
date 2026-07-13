@@ -197,6 +197,33 @@ export function parseSantanderPdf(text: string): ParsedRow[] {
   return rows;
 }
 
+// Parse a Santander "Consulta Movimentos Empréstimo" PDF → latest instalment's
+// outstanding balance + loan payment (juros + capital; the SEG insurance is
+// separate). Rows are newest-first; grouped by instalment number.
+export function parseSantanderLoanPdf(text: string): { balance: number; payment: number; paid: number } | null {
+  // pdf-parse glues the two dates + instalment number and the amounts to EUR.
+  const flat = text.replace(/ /g, ' ').replace(/\s+/g, ' ');
+  const re = /(\d{2}-\d{2}-\d{4})(\d{2}-\d{2}-\d{4})(\d+)PRESTACAO ?- ?(SEG ED|JUROS|CAPIT\.?)(-?\d[\d.]*,\d{2}) ?EUR ?([\d.]*,\d{2}) ?EUR/g;
+  const groups: Record<number, { presta: number; juros?: number; capital?: number; capSaldo?: number }> = {};
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(flat)) !== null) {
+    const presta = Number(m[3]);
+    const type = m[4].trim();
+    const montante = ptPdfNum(m[5]);
+    const saldo = ptPdfNum(m[6]);
+    const g = groups[presta] ?? (groups[presta] = { presta });
+    if (type.startsWith('JUROS')) g.juros = Math.abs(montante);
+    else if (type.startsWith('CAPIT')) { g.capital = Math.abs(montante); g.capSaldo = saldo; }
+  }
+  const latest = Object.values(groups).sort((a, b) => b.presta - a.presta)[0];
+  if (!latest || latest.capSaldo == null) return null;
+  return {
+    balance: latest.capSaldo,
+    payment: Math.round(((latest.juros ?? 0) + (latest.capital ?? 0)) * 100) / 100,
+    paid: latest.presta,   // instalments paid so far
+  };
+}
+
 const BANK_LABEL: Record<string, string> = { santander: 'Santander', activobank: 'ActivoBank' };
 
 // Turn parsed bank rows into records (all rows, both directions), deduped.

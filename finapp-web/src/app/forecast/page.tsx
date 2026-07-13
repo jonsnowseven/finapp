@@ -300,30 +300,6 @@ export default function ForecastPage() {
     return { series, entities: ents };
   }, [rows, years]);
 
-  // Mortgage amortization vs after-tax investments. Finds:
-  //  - payoffMonth: loan balance reaches 0 (scheduled payoff)
-  //  - crossoverMonth: investments (net of tax) ≥ remaining balance (could clear it)
-  const mort = useMemo(() => {
-    const months = years * 12;
-    const i = mortgage.annualPct / 100 / 12;
-    const combined: any[] = [];
-    let bal = mortgage.balance;
-    let payoffMonth = -1;
-    let crossoverMonth = -1;
-
-    for (let m = 0; m <= months; m++) {
-      const net = rows.reduce((a, r) => a + netAt(r, m), 0);
-      const curBal = Math.max(0, bal);
-      combined.push({ label: monthLabel(m).slice(-4), net: Math.round(net), mortgage: Math.round(curBal) });
-      if (payoffMonth < 0 && curBal <= 0 && mortgage.balance > 0) payoffMonth = m;
-      if (crossoverMonth < 0 && mortgage.balance > 0 && net >= curBal) crossoverMonth = m;
-      bal = bal > 0 ? bal * (1 + i) - mortgage.payment : 0;
-    }
-    // payment must exceed first month's interest, else it never amortizes
-    const neverPayoff = mortgage.balance > 0 && mortgage.payment <= mortgage.balance * i;
-    const totalInterest = payoffMonth > 0 ? mortgage.payment * payoffMonth - mortgage.balance : 0;
-    return { combined, payoffMonth, crossoverMonth, neverPayoff, totalInterest };
-  }, [rows, years, mortgage]);
 
   // FIRE — Financial Independence, Retire Early.
   //  - FIRE number = annual expenses / SWR (4% rule ⇒ 25×; Trinity study).
@@ -717,75 +693,6 @@ export default function ForecastPage() {
             <p className="text-xs">Tip: 4% suits a ~30-year retirement. For an early retirement of 40+ years, a safer 3.25–3.5% withdrawal rate guards against a bad run of early market returns.</p>
           </div>
 
-          {/* Mortgage — Crédito Habitação */}
-          <div className="mt-8 mb-3 flex items-baseline justify-between flex-wrap gap-2">
-            <h3 className="text-lg font-bold">Crédito Habitação</h3>
-            <span className="text-xs text-gray-400">When your home loan is paid off — and when your investments could clear it. Saved on this device.</span>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-            <div className="bg-white dark:bg-surface p-5 rounded-2xl border border-gray-200 dark:border-line">
-              <label className="label-caps text-gray-400 dark:text-ink-muted">Outstanding balance (€)</label>
-              <div className="mt-2"><NumInput value={mortgage.balance} step={1000} onChange={(v) => updateMortgage('balance', v)} /></div>
-              <p className="text-[11px] text-gray-400 normal-case mt-2">How much you still owe on the loan today.</p>
-            </div>
-            <div className="bg-white dark:bg-surface p-5 rounded-2xl border border-gray-200 dark:border-line">
-              <label className="label-caps text-gray-400 dark:text-ink-muted">Annual rate (%)</label>
-              <div className="mt-2"><NumInput value={mortgage.annualPct} step={0.1} onChange={(v) => updateMortgage('annualPct', v)} /></div>
-              <p className="text-[11px] text-gray-400 normal-case mt-2">Yearly interest rate — usually Euribor plus your bank's spread.</p>
-            </div>
-            <div className="bg-white dark:bg-surface p-5 rounded-2xl border border-gray-200 dark:border-line">
-              <label className="label-caps text-gray-400 dark:text-ink-muted">Monthly payment (€)</label>
-              <div className="mt-2"><NumInput value={mortgage.payment} step={50} onChange={(v) => updateMortgage('payment', v)} /></div>
-              <p className="text-[11px] text-gray-400 normal-case mt-2">Your monthly instalment (prestação).</p>
-            </div>
-          </div>
-
-          {mortgage.balance > 0 && (
-            <>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                <Card
-                  label="Scheduled payoff"
-                  accent
-                  value={
-                    mort.neverPayoff ? 'Never (payment ≤ interest)'
-                      : mort.payoffMonth > 0 ? `${monthLabel(mort.payoffMonth)} · ${(mort.payoffMonth / 12).toFixed(1)}y`
-                      : `> ${years}y (raise horizon)`
-                  }
-                />
-                <Card
-                  label="Could clear with investments"
-                  value={
-                    mort.crossoverMonth >= 0 ? `${monthLabel(mort.crossoverMonth)} · ${(mort.crossoverMonth / 12).toFixed(1)}y`
-                      : `> ${years}y`
-                  }
-                />
-                <Card
-                  label="Total interest (to payoff)"
-                  value={mort.payoffMonth > 0 ? fmt(mort.totalInterest) : '—'}
-                />
-              </div>
-
-              <div className="bg-white dark:bg-surface p-6 rounded-2xl border border-gray-200 dark:border-line shadow-sm mb-6">
-                <div className="flex items-center gap-4 mb-4 text-xs">
-                  <span className="flex items-center gap-1.5 text-gray-600 dark:text-gray-400"><span className="inline-block w-2.5 h-2.5 rounded-full" style={{ backgroundColor: '#10b981' }} />Investments (net)</span>
-                  <span className="flex items-center gap-1.5 text-gray-600 dark:text-gray-400"><span className="inline-block w-2.5 h-2.5 rounded-full" style={{ backgroundColor: '#ef4444' }} />Mortgage balance</span>
-                </div>
-                <div className={hidden ? 'blur-sm select-none pointer-events-none' : ''}>
-                <ResponsiveContainer width="100%" height={280}>
-                  <LineChart data={mort.combined} margin={{ top: 4, right: 8, left: 8, bottom: 0 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(212,175,55,0.1)" />
-                    <XAxis dataKey="label" tick={{ fontSize: 11, fill: '#6b7280' }} tickLine={false} axisLine={false} interval={11} />
-                    <YAxis tick={{ fontSize: 11, fill: '#6b7280' }} tickLine={false} axisLine={false} width={70} tickFormatter={(v) => `€${(v / 1000).toFixed(0)}k`} />
-                    <Tooltip content={<ForecastTooltip fmt={fmt} />} />
-                    <Line type="monotone" dataKey="net" name="Investments (net)" stroke="#10b981" strokeWidth={2} dot={false} />
-                    <Line type="monotone" dataKey="mortgage" name="Mortgage balance" stroke="#ef4444" strokeWidth={2} dot={false} />
-                  </LineChart>
-                </ResponsiveContainer>
-                </div>
-              </div>
-            </>
-          )}
 
           <p className="text-xs text-gray-400 dark:text-gray-500 mt-4 leading-relaxed max-w-3xl">
             A few things to keep in mind: these are estimates, not promises. Growth is added month

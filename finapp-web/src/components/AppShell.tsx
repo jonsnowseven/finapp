@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { Landmark, LayoutDashboard, Receipt, Wallet, LineChart, Blocks, PiggyBank, LogOut } from 'lucide-react';
+import { Landmark, LayoutDashboard, Receipt, Wallet, LineChart, Blocks, PiggyBank, House, LogOut } from 'lucide-react';
 import ThemeToggle from './ThemeToggle';
 import EyeToggle from './EyeToggle';
 import MonthlyReminder from './MonthlyReminder';
@@ -16,6 +16,7 @@ const NAV = [
   { href: '/transactions', label: 'Transactions', Icon: Receipt },
   { href: '/expenses', label: 'Expenses', Icon: Wallet },
   { href: '/forecast', label: 'Forecast', Icon: LineChart },
+  { href: '/mortgage', label: 'Mortgage', Icon: House },
   { href: '/lego', label: 'Lego', Icon: Blocks },
   { href: '/pension', label: 'Pension', Icon: PiggyBank },
 ];
