@@ -145,7 +145,9 @@ export default function ExpensesOverview({ rows, money, hidden }: {
   }, [rows]);
 
   const eur0 = (v: number) => `€${Math.round(v).toLocaleString('pt-PT')}`;
-  const blur = hidden ? 'blur-sm select-none pointer-events-none' : '';
+  // `relative` contains recharts' absolute resize-detector so it can't overlay
+  // (and intercept clicks on) the rest of the page.
+  const blur = `relative ${hidden ? 'blur-sm select-none pointer-events-none' : ''}`;
 
   return (
     <div className="space-y-6">

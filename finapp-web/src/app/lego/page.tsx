@@ -5,6 +5,7 @@ import ImportModal from '../../components/ImportModal';
 import { legoRate } from '../../lib/lego';
 import { RefreshCw, Upload, Plus } from 'lucide-react';
 import { useHideBalance } from '../../lib/useHideBalance';
+import EyeToggle from '../../components/EyeToggle';
 
 interface LegoSet {
   set_no: string;
@@ -85,6 +86,7 @@ export default function LegoPage() {
           <p className="text-gray-500 dark:text-gray-400 text-sm">Sets held for appreciation, with a research-based forecast per theme.</p>
         </div>
         <div className="flex items-center gap-2 mt-1 shrink-0">
+          <EyeToggle />
           <button onClick={() => setShowAdd(true)} className="flex items-center gap-2 px-3 py-2 rounded-xl border border-gray-300 dark:border-line text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-surface-3"><Plus size={14} />Add set</button>
           <button onClick={() => setShowImport(true)} className="flex items-center gap-2 px-3 py-2 rounded-xl border border-gray-300 dark:border-line text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-surface-3"><Upload size={14} />Import</button>
           <button onClick={handleRefresh} disabled={refreshing} title="Refresh" className="px-3 py-2 rounded-xl border border-gray-300 dark:border-line text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-surface-3 disabled:opacity-50"><RefreshCw size={14} className={refreshing ? 'animate-spin' : ''} /></button>

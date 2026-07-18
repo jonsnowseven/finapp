@@ -2,6 +2,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useHideBalance } from '../../lib/useHideBalance';
+import EyeToggle from '../../components/EyeToggle';
 
 interface Scenario {
   scenario: 'early' | 'personal' | 'legal';
@@ -77,12 +78,15 @@ export default function PensionPage() {
             Enter the values from your Social Security simulation. Three scenarios: early, personal age, legal age.
           </p>
         </div>
-        <button
-          onClick={save} disabled={saving}
-          className="shrink-0 mt-1 px-4 py-2 rounded-xl bg-indigo-600 dark:bg-gold-500 text-white dark:text-black text-sm font-semibold hover:bg-indigo-700 dark:hover:bg-gold-600 transition-colors disabled:opacity-50"
-        >
-          {saving ? 'Saving…' : saved ? 'Saved ✓' : 'Save'}
-        </button>
+        <div className="flex items-center gap-2 shrink-0 mt-1">
+          <EyeToggle />
+          <button
+            onClick={save} disabled={saving}
+            className="px-4 py-2 rounded-xl bg-indigo-600 dark:bg-gold-500 text-white dark:text-black text-sm font-semibold hover:bg-indigo-700 dark:hover:bg-gold-600 transition-colors disabled:opacity-50"
+          >
+            {saving ? 'Saving…' : saved ? 'Saved ✓' : 'Save'}
+          </button>
+        </div>
       </div>
 
       {loading ? (

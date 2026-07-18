@@ -23,12 +23,12 @@ export function useHideBalance() {
   }, []);
 
   const toggle = useCallback(() => {
-    setHidden((h) => {
-      const next = !h;
-      localStorage.setItem(KEY, String(next));
-      window.dispatchEvent(new Event(EVT));
-      return next;
-    });
+    // Read the shared source of truth, flip it, persist, then broadcast — all
+    // as plain event-handler side effects (never inside a state updater).
+    const next = localStorage.getItem(KEY) === 'false';   // currently shown → hide next
+    localStorage.setItem(KEY, String(next));
+    setHidden(next);
+    window.dispatchEvent(new Event(EVT));
   }, []);
 
   // Mask a formatted string, or format+mask a number.

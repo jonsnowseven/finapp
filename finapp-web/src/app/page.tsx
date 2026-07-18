@@ -523,7 +523,7 @@ export default function HomePage() {
             </div>
           </div>
 
-          <div className={`grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6 ${hideBalance ? 'blur-sm select-none pointer-events-none' : ''}`}>
+          <div className={`relative grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6 ${hideBalance ? 'blur-sm select-none pointer-events-none' : ''}`}>
             <NetWorthChart data={snapshots} />
             <AllocationPie data={entityBalances.map((b) => ({ name: b.entity, value: b.valuation ?? b.balance }))} />
           </div>

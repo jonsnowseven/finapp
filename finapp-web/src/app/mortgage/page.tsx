@@ -146,9 +146,9 @@ export default function MortgagePage() {
       {/* Inputs */}
       <div className="bg-white dark:bg-surface p-4 rounded-2xl border border-gray-200 dark:border-line mb-6">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-          <Field label="Outstanding balance (€)"><NumInput value={m.balance} step={1000} onChange={(v) => update('balance', v)} /></Field>
+          <Field label="Outstanding balance (€)"><div className={hidden ? 'blur-sm select-none pointer-events-none' : ''}><NumInput value={m.balance} step={1000} onChange={(v) => update('balance', v)} /></div></Field>
           <Field label="Current Euribor (%)"><NumInput value={m.annualPct} step={0.01} onChange={(v) => update('annualPct', v)} /></Field>
-          <Field label="Current payment (€/mo)"><NumInput value={m.payment} step={10} onChange={(v) => update('payment', v)} /></Field>
+          <Field label="Current payment (€/mo)"><div className={hidden ? 'blur-sm select-none pointer-events-none' : ''}><NumInput value={m.payment} step={10} onChange={(v) => update('payment', v)} /></div></Field>
           <Field label="Total term (months)"><NumInput value={m.totalTerm} step={1} onChange={(v) => update('totalTerm', Math.round(v))} /></Field>
           <Field label={`Remaining months${m.paid ? ` (${m.paid} paid)` : ''}`}><NumInput value={m.remainingMonths} step={1} onChange={(v) => update('remainingMonths', Math.round(v))} /></Field>
           <Field label="Bank spread (%)"><NumInput value={m.spread} step={0.05} onChange={(v) => update('spread', v)} /></Field>
@@ -207,7 +207,7 @@ export default function MortgagePage() {
         </div>
         <div className="lg:col-span-2 bg-white dark:bg-surface p-6 rounded-2xl border border-gray-200 dark:border-line">
           <p className="label-caps text-gray-400 dark:text-ink-muted mb-4">Balance over time (current rate)</p>
-          <div className={hidden ? 'blur-sm select-none pointer-events-none' : ''}>
+          <div className={`relative ${hidden ? 'blur-sm select-none pointer-events-none' : ''}`}>
             <ResponsiveContainer width="100%" height={260}>
               <LineChart data={amort.pts} margin={{ top: 4, right: 8, left: 8, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(212,175,55,0.1)" />

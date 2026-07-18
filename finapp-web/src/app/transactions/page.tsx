@@ -5,6 +5,7 @@ import TransactionChart from '../../components/TransactionChart';
 import ImportModal from '../../components/ImportModal';
 import { RefreshCw, Upload, ChevronDown } from 'lucide-react';
 import { useHideBalance } from '../../lib/useHideBalance';
+import EyeToggle from '../../components/EyeToggle';
 
 type ImportKey = 'kraken' | 'degiro' | 'tr' | 'bancoinvest' | 'sgf' | 'revolut' | 'aforro';
 
@@ -212,6 +213,7 @@ export default function TransactionsPage() {
             )}
           </div>
 
+          <EyeToggle />
           <button
             onClick={handleRefresh}
             disabled={refreshing}
@@ -261,7 +263,7 @@ export default function TransactionsPage() {
 
       {/* Chart */}
       {!loading && (
-        <div className={hidden ? 'blur-sm select-none pointer-events-none' : ''}>
+        <div className={`relative ${hidden ? 'blur-sm select-none pointer-events-none' : ''}`}>
         <TransactionChart
           transactions={filteredTransactions}
           legendEntities={entities.filter(e => e !== 'All')}

@@ -4,6 +4,7 @@ import { supabase } from '../../lib/supabase';
 import { EXPENSE_TAGS, validateTag, countsInTotals, tagColor, merchantKey } from '../../lib/expenses';
 import ImportModal from '../../components/ImportModal';
 import ExpensesOverview from '../../components/ExpensesOverview';
+import EyeToggle from '../../components/EyeToggle';
 import { useHideBalance } from '../../lib/useHideBalance';
 import { Search } from 'lucide-react';
 
@@ -237,6 +238,7 @@ export default function ExpensesPage() {
           <p className="text-gray-500 dark:text-gray-400 text-sm">Track cashflow by tag. Import bank CSVs — all rows kept; transfers/investments/savings excluded from totals. Click a tag to re-assign it.</p>
         </div>
         <div className="flex items-center gap-2 mt-1 shrink-0">
+          <EyeToggle />
           <div className="flex rounded-xl border border-gray-300 dark:border-line overflow-hidden mr-1">
             {(['list', 'overview'] as const).map((v) => (
               <button key={v} onClick={() => setView(v)}

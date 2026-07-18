@@ -6,6 +6,7 @@ import {
 import { supabase } from '../../lib/supabase';
 import { entityHex, typeSign, defaultReturn, defaultTax, defaultTer, DEFAULT_MONTHLY_BUY } from '../../lib/entities';
 import { useHideBalance } from '../../lib/useHideBalance';
+import EyeToggle from '../../components/EyeToggle';
 
 interface Assumption {
   entity: string;
@@ -399,13 +400,16 @@ export default function ForecastPage() {
 
   return (
     <main className="max-w-7xl mx-auto p-6 md:p-8">
-      <div className="mb-8">
-        <h2 className="text-2xl font-bold">Forecast</h2>
-        <p className="text-gray-500 dark:text-gray-400 text-sm">
-          See where your money could end up if you keep investing the way you do now. Where you
-          buy regularly, those monthly buys carry on; everything else simply grows at its assumed
-          rate. Every number below is an editable assumption — change any of them to explore.
-        </p>
+      <div className="mb-8 flex items-start justify-between gap-4">
+        <div>
+          <h2 className="text-2xl font-bold">Forecast</h2>
+          <p className="text-gray-500 dark:text-gray-400 text-sm">
+            See where your money could end up if you keep investing the way you do now. Where you
+            buy regularly, those monthly buys carry on; everything else simply grows at its assumed
+            rate. Every number below is an editable assumption — change any of them to explore.
+          </p>
+        </div>
+        <div className="shrink-0 mt-1"><EyeToggle /></div>
       </div>
 
       {loading ? (
@@ -457,7 +461,7 @@ export default function ForecastPage() {
                 <span className="flex items-center gap-1.5"><span className="inline-block w-3 h-0.5 rounded border-t border-dashed" style={{ borderColor: 'rgb(var(--brand-500))' }} />Forecast</span>
               </div>
             </div>
-            <div className={hidden ? 'blur-sm select-none pointer-events-none' : ''}>
+            <div className={`relative ${hidden ? 'blur-sm select-none pointer-events-none' : ''}`}>
               <ResponsiveContainer width="100%" height={260}>
                 <LineChart data={timeline} margin={{ top: 4, right: 8, left: 8, bottom: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="rgba(212,175,55,0.1)" />
@@ -476,7 +480,7 @@ export default function ForecastPage() {
 
           {/* Per-entity projection */}
           <div className="bg-white dark:bg-surface p-6 rounded-2xl border border-gray-200 dark:border-line shadow-sm mb-6">
-            <div className={hidden ? 'blur-sm select-none pointer-events-none' : ''}>
+            <div className={`relative ${hidden ? 'blur-sm select-none pointer-events-none' : ''}`}>
             <ResponsiveContainer width="100%" height={320}>
               <AreaChart data={series} margin={{ top: 4, right: 8, left: 8, bottom: 0 }}>
                 <defs>
