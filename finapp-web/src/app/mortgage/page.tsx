@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { supabase } from '../../lib/supabase';
 import { useHideBalance } from '../../lib/useHideBalance';
+import EyeToggle from '../../components/EyeToggle';
 import { TENORS, type Tenor } from '../../lib/euribor';
 
 interface Mortgage {
@@ -34,7 +35,6 @@ export default function MortgagePage() {
   const { money, hidden } = useHideBalance();
   const [m, setM] = useState<Mortgage>(DEFAULTS);
   const [monthly, setMonthly] = useState<{ period: string; rate: number }[]>([]);   // ECB monthly averages
-  const [mtd, setMtd] = useState<{ avg: number | null; days: number }>({ avg: null, days: 0 });
 
   // Load mortgage (localStorage cache → DB authoritative).
   useEffect(() => {
@@ -80,27 +80,22 @@ export default function MortgagePage() {
     } catch { setImportErr('Network error'); }
   }
 
-  // Euribor: monthly averages (last 15) + month-to-date daily average for the tenor.
+  // Euribor: ECB monthly averages (the ECB FM dataset has no daily frequency).
   useEffect(() => {
     fetch(`/api/euribor?tenor=${m.tenor}&freq=M&n=15`).then((r) => r.json())
       .then((j) => setMonthly(j.observations ?? [])).catch(() => setMonthly([]));
-    const firstOfMonth = ym(new Date()) + '-01';
-    supabase.from('euribor_daily').select('rate,date').eq('tenor', m.tenor).gte('date', firstOfMonth)
-      .then(({ data }) => {
-        if (data?.length) setMtd({ avg: data.reduce((a, r) => a + Number(r.rate), 0) / data.length, days: data.length });
-        else setMtd({ avg: null, days: 0 });
-      });
   }, [m.tenor]);
 
   const monthlyByPeriod = useMemo(() => Object.fromEntries(monthly.map((o) => [o.period, o.rate])), [monthly]);
   const latestMonthly = monthly.length ? monthly[monthly.length - 1] : null;
-  const curMonth = ym(new Date());
 
   // Reference month for the next reset = the month before the reset month.
+  // Complete months use the ECB monthly average; otherwise fall back to the
+  // latest published month as an estimate (no daily source is available).
   const reset = m.resetMonth || '';
   const refMonth = reset ? prevMonth(reset) : '';
   const refAvg: number | null = refMonth
-    ? (monthlyByPeriod[refMonth] ?? (refMonth === curMonth ? mtd.avg : (latestMonthly?.rate ?? mtd.avg)))
+    ? (monthlyByPeriod[refMonth] ?? latestMonthly?.rate ?? null)
     : null;
   const refComplete = !!refMonth && refMonth in monthlyByPeriod;
 
@@ -137,12 +132,15 @@ export default function MortgagePage() {
           <h2 className="text-3xl font-bold tracking-tight">Crédito Habitação</h2>
           <p className="text-gray-500 dark:text-ink-muted text-sm mt-1">Track your mortgage and project the next Euribor rate reset.</p>
         </div>
-        <label className="shrink-0 mt-1 cursor-pointer px-3 py-2 rounded-xl border border-gray-300 dark:border-line text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-surface-3"
-          title="Santander → Empréstimos → Consulta Movimentos → export PDF">
-          Import Santander PDF
-          <input type="file" accept=".pdf" className="hidden"
-            onChange={(e) => { const f = e.target.files?.[0]; if (f) importLoan(f); e.currentTarget.value = ''; }} />
-        </label>
+        <div className="flex items-center gap-2 shrink-0 mt-1">
+          <EyeToggle />
+          <label className="cursor-pointer px-3 py-2 rounded-xl border border-gray-300 dark:border-line text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-surface-3"
+            title="Santander → Empréstimos → Consulta Movimentos → export PDF">
+            Import Santander PDF
+            <input type="file" accept=".pdf" className="hidden"
+              onChange={(e) => { const f = e.target.files?.[0]; if (f) importLoan(f); e.currentTarget.value = ''; }} />
+          </label>
+        </div>
       </div>
 
       {/* Inputs */}
@@ -165,21 +163,38 @@ export default function MortgagePage() {
         </div>
         {importErr && <p className="text-sm text-red-500 mt-3">{importErr}</p>}
         <p className="text-[11px] text-gray-400 mt-3">
-          Effective rate = Euribor + spread = <strong>{effRate.toFixed(3)}%</strong>. Revision rate uses the average {m.tenor} Euribor of the month <strong>before</strong> the revision + spread; PT loans reset the payment the following month. Import pulls balance + payment (juros + capital) from the latest instalment.
+          Effective rate = Euribor + spread = <strong>{effRate.toFixed(3)}%</strong>. Revision rate uses the ECB monthly-average {m.tenor} Euribor of the month <strong>before</strong> the revision + spread; PT loans reset the payment the following month. (ECB has no daily Euribor, so incomplete months use the latest published month as an estimate.) Import pulls balance + payment from the latest instalment.
         </p>
       </div>
 
       {/* Reset projection */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        <Card label={`Current ${m.tenor} Euribor`} value={pct(latestMonthly?.rate ?? null)} sub={latestMonthly?.period ?? '—'} />
+        <Card label={`Latest ${m.tenor} Euribor`} value={pct(latestMonthly?.rate ?? null)}
+          sub={latestMonthly ? `ECB monthly avg · ${latestMonthly.period}` : '—'} />
         <Card label={refMonth ? `${monthName(refMonth)} avg${refComplete ? '' : ' (est.)'}` : 'Reference month'}
-          value={pct(refAvg)} sub={refComplete ? 'ECB monthly' : mtd.avg != null ? `month-to-date · ${mtd.days}d` : 'no data yet'} />
+          value={pct(refAvg)} sub={refComplete ? 'ECB monthly' : 'latest published (est.)'} />
         <Card label="Projected rate" value={pct(projectedRate)} sub={`${m.tenor} + ${m.spread.toFixed(2)}% spread`} accent />
         <Card label={reset ? `Next payment · ${monthName(reset)}→` : 'Projected payment'}
           value={projectedPayment != null ? money(projectedPayment) : '—'}
           sub={delta != null ? `${delta >= 0 ? '+' : '−'}${money(Math.abs(delta))}/mo vs now` : 'set balance + reset month'}
           good={(delta ?? 0) < 0} bad={(delta ?? 0) > 0} />
       </div>
+
+      {/* Euribor trend (monthly averages) */}
+      {monthly.length > 0 && (
+        <div className="bg-white dark:bg-surface p-6 rounded-2xl border border-gray-200 dark:border-line mb-6">
+          <p className="label-caps text-gray-400 dark:text-ink-muted mb-4">{m.tenor} Euribor · monthly average (ECB)</p>
+          <ResponsiveContainer width="100%" height={220}>
+            <LineChart data={monthly} margin={{ top: 4, right: 8, left: 8, bottom: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="rgba(212,175,55,0.1)" />
+              <XAxis dataKey="period" tick={{ fontSize: 11, fill: '#6b7280' }} tickLine={false} axisLine={false} minTickGap={30} />
+              <YAxis tick={{ fontSize: 11, fill: '#6b7280' }} tickLine={false} axisLine={false} width={48} domain={['auto', 'auto']} tickFormatter={(v) => `${v.toFixed(2)}%`} />
+              <Tooltip contentStyle={{ background: '#171717', border: '1px solid #282828', borderRadius: 8, fontSize: 12 }} formatter={(v: number) => `${v.toFixed(3)}%`} />
+              <Line type="monotone" dataKey="rate" stroke="rgb(var(--brand-500))" strokeWidth={2} dot={false} />
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
+      )}
 
       {/* Amortization */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
