@@ -20,6 +20,8 @@ export async function computeSnapshot(fresh = true): Promise<{ total: number; by
   const valDate: Record<string, string> = {};
   const { data: vals } = await db.from('valuations').select('*').order('as_of_date', { ascending: true });
   for (const v of vals ?? []) { val[v.entity] = Number(v.value); valDate[v.entity] = v.as_of_date; }
+  // 'Trade Republic Cash' flows through as its own entity (statement valuation),
+  // like Revolut — no special handling needed here.
 
   const daysSince = (d: string) => Math.max(0, (Date.now() - new Date(d).getTime()) / 86_400_000);
 
@@ -38,6 +40,17 @@ export async function computeSnapshot(fresh = true): Promise<{ total: number; by
   if (val['Revolut'] && valDate['Revolut']) {
     const annual = 0.025 * (1 - 0.28);
     val['Revolut'] = val['Revolut'] * (1 + annual * daysSince(valDate['Revolut']) / 365);
+  }
+  // Trade Republic cash: accrue the statement balance at Euribor-3M net of 28% PT tax.
+  if (val['Trade Republic Cash'] && valDate['Trade Republic Cash']) {
+    try {
+      const { rate } = await fetchEuribor3M(fresh);
+      const eur = Number(rate);
+      if (isFinite(eur)) {
+        const annual = eur * (1 - 0.28) / 100;
+        val['Trade Republic Cash'] = val['Trade Republic Cash'] * (1 + annual * daysSince(valDate['Trade Republic Cash']) / 365);
+      }
+    } catch { /* keep raw statement value */ }
   }
 
   const holdings = (entity: string, key: (tx: any) => string | null) => {

@@ -318,6 +318,32 @@ export default function HomePage() {
         }
       }
 
+      // Trade Republic cash-at-interest (statement ending balance) — tracked as its
+      // own line like Revolut Boosted, and accrued forward at the live Euribor rate
+      // (net of 28% PT withholding) so the Overview stays up to date between statements.
+      const trCashEntity = byEntity['Trade Republic Cash'];
+      if (trCashEntity?.valuation && trCashEntity.valuationDate) {
+        const base = trCashEntity.valuation;
+        const baseDate = trCashEntity.valuationDate;
+        const days = Math.max(0, (Date.now() - new Date(baseDate).getTime()) / 86_400_000);
+        let eur = NaN;
+        try { const r = await fetch(`/api/euribor${q}`); eur = Number((await r.json()).rate); } catch { /* keep raw */ }
+        if (isFinite(eur)) {
+          const net = eur * (1 - 0.28);           // 28% PT withholding on interest
+          trCashEntity.valuation = base * (1 + (net / 100) * days / 365);
+          trCashEntity.valuationDate = `est. · Euribor3M ${eur.toFixed(3)}% net`;
+          trCashEntity.info =
+            `Trade Republic cash at interest — checking-account balance (escrow + money-market fund).\n\n` +
+            `Base: statement balance ${fmt(base)} on ${baseDate}, accrued ~${Math.round(days)} days at ` +
+            `${net.toFixed(2)}%/yr NET (Euribor 3M ${eur.toFixed(3)}% − 28% PT tax).\n\n` +
+            `Import a newer statement PDF to reset the base.`;
+        } else {
+          trCashEntity.info =
+            `Trade Republic cash at interest — statement balance ${fmt(base)} on ${baseDate}. ` +
+            `Euribor unavailable, showing the raw balance. Import a newer statement PDF to update.`;
+        }
+      }
+
       // Live valuation for DeGiro: net holdings × current price, auto-resolved by ISIN.
       // ISIN is embedded in source_document: "degiro_web_<ISIN>_<date>_<time>_<idx>".
       const dgHoldings: Record<string, number> = {};   // isin -> units
@@ -402,6 +428,9 @@ export default function HomePage() {
       // plus current total as a final inflow today. interest/dividend are internal.
       const cfs: CashFlow[] = [];
       for (const tx of data) {
+        // TR cash pot is internal (funds ETF buys, which already count as
+        // contributions) — skip so contributions aren't double-counted.
+        if (tx.entity === 'Trade Republic Cash') continue;
         const t = (tx.transaction_type ?? '').toLowerCase();
         const amt = Number(tx.amount);
         if (t === 'buy' || t === 'deposit') cfs.push({ date: new Date(tx.date), amount: -amt });

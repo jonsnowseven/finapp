@@ -14,7 +14,7 @@ type ImportKey = 'kraken' | 'degiro' | 'tr' | 'bancoinvest' | 'sgf' | 'revolut' 
 const IMPORT_SOURCES: { key: ImportKey; label: string; hint: string }[] = [
   { key: 'kraken',      label: 'Kraken (PDF)',             hint: 'Kraken.com → History → Export → request a Ledgers/Trades statement, then download the PDF.' },
   { key: 'degiro',      label: 'DeGiro (PDF)',             hint: 'DeGiro → Activity (Atividade) → Account statement / Transactions → Export → PDF.' },
-  { key: 'tr',          label: 'Trade Republic (CSV)',     hint: 'Trade Republic app → Profile → Transactions → Export, or the transactions CSV emailed to you.' },
+  { key: 'tr',          label: 'Trade Republic (CSV/PDF)',  hint: 'CSV: app → Profile → Transactions → Export (ETF trades). PDF: app → account statement (adds cash at interest — escrow + money-market fund balance).' },
   { key: 'bancoinvest', label: 'Banco Invest PPR (PDF)',   hint: 'Banco Invest (Alves Ribeiro) → PPR → Posição Atual → export/print the position report as PDF.' },
   { key: 'sgf',         label: 'SGF PPR (PDF)',            hint: 'Golden SGF portal → Recibos / Documentos → download the subscription receipt PDF.' },
   { key: 'revolut',     label: 'Revolut Boosted (PDF)',    hint: 'Revolut app → Account → Statement → generate the EUR account statement (PDF).' },
@@ -128,9 +128,9 @@ export default function TransactionsPage() {
       {showImport === 'tr' && (
         <ImportModal
           title="Import Trade Republic"
-          description="Upload a CSV transaction export from Trade Republic"
+          description="CSV transactions (ETF trades) or a PDF account statement (cash at interest)"
           endpoint="/api/import/trade-republic"
-          accept=".csv"
+          accept=".csv,.pdf"
           hint={hintFor('tr')}
           onClose={() => setShowImport(null)}
           onImported={() => { setShowImport(null); handleRefresh(); }}

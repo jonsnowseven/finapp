@@ -71,6 +71,12 @@ function monthLabel(m: number): string {
   return d.toLocaleDateString('en-GB', { month: 'short', year: 'numeric' });
 }
 
+// Fractional months between two ISO dates (a → b).
+function monthsBetween(a: string, b: string): number {
+  const da = new Date(a), db = new Date(b);
+  return (db.getFullYear() - da.getFullYear()) * 12 + (db.getMonth() - da.getMonth()) + (db.getDate() - da.getDate()) / 30;
+}
+
 export default function ForecastPage() {
   const { hidden } = useHideBalance();
   // Base rows are derived from the ledger; user edits are stored as per-entity
@@ -237,13 +243,18 @@ export default function ForecastPage() {
     const valByEntity: Record<string, number> = {};
     for (const v of vals ?? []) valByEntity[v.entity] = Number(v.value); // ascending → last wins
 
+    // Live Euribor-3M net of 28% PT tax — the TR cash / MMF return assumption,
+    // matching the Overview accrual. Falls back to the static default if offline.
+    let cashNet = NaN;
+    try { const r = await fetch('/api/euribor'); const e = Number((await r.json()).rate); if (isFinite(e)) cashNet = Math.round(e * (1 - 0.28) * 100) / 100; } catch { /* use static default */ }
+
     const entities = Array.from(new Set(txs.map((t) => t.entity))).sort();
     setBaseRows(entities.map((e) => ({
       entity: e,
       // Prefer live market value (latest snapshot), then statement valuation, then cost basis.
       start: Math.round(((live[e] ?? valByEntity[e] ?? net[e]) || 0) * 100) / 100,
       monthly: DEFAULT_MONTHLY_BUY[e] ?? Math.round(((recent[e] ?? 0) / MONTHS_BACK) * 100) / 100,
-      annualPct: defaultReturn(e),
+      annualPct: e === 'Trade Republic Cash' && isFinite(cashNet) ? cashNet : defaultReturn(e),
       terPct: defaultTer(e),
       taxPct: defaultTax(e),
     })));
@@ -355,20 +366,53 @@ export default function ForecastPage() {
   const startTotal = rows.reduce((a, r) => a + r.start, 0);
   const monthlyTotal = rows.reduce((a, r) => a + r.monthly, 0);
 
+  // "Plan" baseline: project the EARLIEST snapshot forward at the blended net return
+  // + current monthly contributions. Overlaid on the actual history so the gap between
+  // where the plan expected you to be and where you actually are is visible.
+  const planOrigin = useMemo(() => {
+    if (!history.length) return null;
+    const first = [...history].sort((a, b) => (a.date < b.date ? -1 : 1))[0];
+    return { date: first.date, value: first.total };
+  }, [history]);
+  const planMonthly = fireCalc.blended / 100 / 12;   // blended net monthly rate
+  const planAt = useCallback((dateStr: string): number | undefined => {
+    if (!planOrigin) return undefined;
+    const k = monthsBetween(planOrigin.date, dateStr);
+    if (k < 0) return undefined;
+    const g = Math.pow(1 + planMonthly, k);
+    const v = planMonthly > 1e-9
+      ? planOrigin.value * g + monthlyTotal * (g - 1) / planMonthly
+      : planOrigin.value + monthlyTotal * k;
+    return Math.round(v);
+  }, [planOrigin, planMonthly, monthlyTotal]);
+
   // Continuous timeline: actual net worth (snapshots) → today → projection.
   const todayIso = new Date().toISOString().slice(0, 10);
   const timeline = useMemo(() => {
-    const pts: { date: string; actual?: number; forecast?: number }[] =
-      history.map((s) => ({ date: s.date, actual: s.total }));
+    const pts: { date: string; actual?: number; forecast?: number; plan?: number }[] =
+      history.map((s) => ({ date: s.date, actual: s.total, plan: planAt(s.date) }));
     const now = new Date();
     for (let m = 0; m <= years * 12; m += m < 12 ? 1 : 3) {   // monthly first year, then quarterly
       const d = new Date(now.getFullYear(), now.getMonth() + m, 1);
       pts.push({ date: d.toISOString().slice(0, 10), forecast: Math.round(rows.reduce((a, r) => a + projectGross(r, m), 0)) });
     }
     // Bridge: anchor the projection start to today's actual value.
-    pts.push({ date: todayIso, actual: Math.round(startTotal), forecast: Math.round(startTotal) });
+    pts.push({ date: todayIso, actual: Math.round(startTotal), forecast: Math.round(startTotal), plan: planAt(todayIso) });
     return pts.sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
-  }, [history, rows, years, startTotal, todayIso]);
+  }, [history, rows, years, startTotal, todayIso, planAt]);
+
+  // Metric: today's actual value vs where the plan (from the first snapshot) expected
+  // you to be. Positive = ahead of plan. Needs ≥1 month of history to be meaningful.
+  const vsPlan = useMemo(() => {
+    if (!planOrigin) return null;
+    const months = monthsBetween(planOrigin.date, todayIso);
+    if (months < 1) return null;
+    const expected = planAt(todayIso);
+    if (expected == null || expected <= 0) return null;
+    const delta = Math.round(startTotal - expected);
+    return { fromDate: planOrigin.date, months: Math.round(months), expected, delta, pct: (delta / expected) * 100 };
+  }, [planOrigin, planAt, startTotal, todayIso]);
+
   const contributed = startTotal + monthlyTotal * years * 12;
   const endNet = rows.reduce((a, r) => a + netAt(r, years * 12), 0);   // after PT tax
   const growthNet = endNet - contributed;
@@ -454,10 +498,23 @@ export default function ForecastPage() {
 
           {/* History + Forecast timeline */}
           <div className="bg-white dark:bg-surface p-6 rounded-2xl border border-gray-200 dark:border-line shadow-sm mb-6">
-            <div className="flex items-center justify-between mb-4">
-              <p className="label-caps text-gray-400 dark:text-ink-muted">Net worth · history &amp; forecast</p>
-              <div className="flex items-center gap-4 text-xs text-gray-500 dark:text-ink-muted">
+            <div className="flex items-start justify-between gap-4 mb-4">
+              <div>
+                <p className="label-caps text-gray-400 dark:text-ink-muted">Net worth · history &amp; forecast</p>
+                {vsPlan && (
+                  <p className="text-xs mt-1 text-gray-500 dark:text-ink-muted cursor-help"
+                    title={`Plan projects your first snapshot (${fmt(planOrigin!.value)} on ${vsPlan.fromDate}, ${vsPlan.months} mo ago) forward at the blended net return (${fireCalc.blended.toFixed(1)}%/yr) plus ${fmt(monthlyTotal)}/mo of contributions. Expected today: ${fmt(vsPlan.expected)} · Actual today: ${fmt(Math.round(startTotal))}.`}>
+                    vs plan:{' '}
+                    <span className={vsPlan.delta >= 0 ? 'text-gain font-semibold' : 'text-loss font-semibold'}>
+                      {vsPlan.delta >= 0 ? '+' : ''}{fmt(vsPlan.delta)} ({vsPlan.pct >= 0 ? '+' : ''}{vsPlan.pct.toFixed(1)}%)
+                    </span>
+                    <span className="text-gray-400 dark:text-ink-faint"> {vsPlan.delta >= 0 ? 'ahead' : 'behind'} · since {vsPlan.fromDate} ⓘ</span>
+                  </p>
+                )}
+              </div>
+              <div className="flex items-center gap-4 text-xs text-gray-500 dark:text-ink-muted shrink-0">
                 <span className="flex items-center gap-1.5"><span className="inline-block w-3 h-0.5 rounded" style={{ backgroundColor: '#3ce36a' }} />Actual</span>
+                {planOrigin && <span className="flex items-center gap-1.5"><span className="inline-block w-3 border-t border-dotted" style={{ borderColor: '#9a9488' }} />Plan</span>}
                 <span className="flex items-center gap-1.5"><span className="inline-block w-3 h-0.5 rounded border-t border-dashed" style={{ borderColor: 'rgb(var(--brand-500))' }} />Forecast</span>
               </div>
             </div>
@@ -471,6 +528,7 @@ export default function ForecastPage() {
                   <Tooltip contentStyle={{ background: '#171717', border: '1px solid #282828', borderRadius: 8, fontSize: 12 }}
                     formatter={(v: number) => fmt(v)} labelFormatter={(l) => String(l)} />
                   <ReferenceLine x={todayIso} stroke="#6b7280" strokeDasharray="4 4" label={{ value: 'today', fontSize: 10, fill: '#9a9488', position: 'insideTopRight' }} />
+                  <Line type="monotone" dataKey="plan" name="Plan" stroke="#9a9488" strokeWidth={1.5} strokeDasharray="2 3" dot={false} connectNulls />
                   <Line type="monotone" dataKey="actual" name="Actual" stroke="#3ce36a" strokeWidth={2} dot={false} connectNulls />
                   <Line type="monotone" dataKey="forecast" name="Forecast" stroke="rgb(var(--brand-500))" strokeWidth={2} strokeDasharray="5 4" dot={false} connectNulls />
                 </LineChart>

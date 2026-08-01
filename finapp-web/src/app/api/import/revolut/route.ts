@@ -95,7 +95,8 @@ function parseRevolutValuation(text: string): { as_of_date: string; value: numbe
   const amts = slice.match(/\d[\d\s.]*,\d{2}(?=\s*€)/g);
   if (!amts?.length) return null;
   const value = ptNum(amts[amts.length - 1]);
-  if (!value) return null;
+  // Allow 0 — an emptied Boosted account must be able to overwrite a stale balance.
+  if (!Number.isFinite(value)) return null;
 
   const dm = text.match(/Gerado a (\d{2})\/(\d{2})\/(\d{4})/);
   const as_of_date = dm ? `${dm[3]}-${dm[2]}-${dm[1]}` : new Date().toISOString().slice(0, 10);

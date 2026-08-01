@@ -4,6 +4,7 @@ export const ENTITY_HEX: Record<string, string> = {
   'Kraken':         '#a855f7', // purple
   'DeGiro':         '#f97316', // orange
   'Trade Republic': '#0ea5e9', // sky
+  'Trade Republic Cash': '#38bdf8', // light sky (cash at interest)
   'Banco Invest':   '#10b981', // emerald
   'SGF':            '#f59e0b', // amber
   'Revolut':        '#6366f1', // indigo
@@ -21,6 +22,7 @@ export const TYPE_SIGN: Record<string, number> = {
   interest: 1,
   dividend: 1,
   sell: -1,
+  withdrawal: -1,
 };
 export const typeSign = (t: string) => TYPE_SIGN[t?.toLowerCase()] ?? 1;
 
@@ -30,6 +32,7 @@ export const typeSign = (t: string) => TYPE_SIGN[t?.toLowerCase()] ?? 1;
 export const DEFAULT_ANNUAL_RETURN: Record<string, number> = {
   'Aforro':         2.5,  // Série F gross cap
   'Revolut':        1.8,  // 2.5% gross − 28% PT withholding
+  'Trade Republic Cash': 1.5, // MMF/cash ≈ Euribor net of 28% (forecast overrides w/ live rate)
   'Banco Invest':   4.0,  // managed PPR
   'SGF':            4.0,  // managed PPR
   'Trade Republic': 7.0,  // diversified ETFs
@@ -46,6 +49,7 @@ export const defaultReturn = (entity: string) => DEFAULT_ANNUAL_RETURN[entity] ?
 export const DEFAULT_GAINS_TAX: Record<string, number> = {
   'Aforro':         28,
   'Revolut':        0,
+  'Trade Republic Cash': 0, // modelled net (28% withheld at source)
   'Banco Invest':   8,
   'SGF':            8,
   'Trade Republic': 28,
@@ -60,6 +64,7 @@ export const defaultTax = (entity: string) => DEFAULT_GAINS_TAX[entity] ?? 28;
 export const DEFAULT_TER: Record<string, number> = {
   'Aforro':         0,
   'Revolut':        0,
+  'Trade Republic Cash': 0,
   'Kraken':         0,
   'Trade Republic': 0.2,  // ETFs
   'DeGiro':         0.2,  // ETFs (direct stocks: set to 0)
@@ -76,6 +81,7 @@ export const DEFAULT_MONTHLY_BUY: Record<string, number> = {
   'DeGiro':         0,
   'Kraken':         0,
   'Revolut':        50,
+  'Trade Republic Cash': 0, // internal cash pot, not a recurring contribution
   'Trade Republic': 1050,
   'SGF':            50,
 };
