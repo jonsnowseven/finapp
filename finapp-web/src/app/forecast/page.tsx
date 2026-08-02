@@ -248,7 +248,12 @@ export default function ForecastPage() {
     let cashNet = NaN;
     try { const r = await fetch('/api/euribor'); const e = Number((await r.json()).rate); if (isFinite(e)) cashNet = Math.round(e * (1 - 0.28) * 100) / 100; } catch { /* use static default */ }
 
-    const entities = Array.from(new Set(txs.map((t) => t.entity))).sort();
+    // Union of ledger entities AND latest-snapshot entities. Snapshot-only holdings
+    // (e.g. LEGO, valued from its own table with no transactions) must be rows too —
+    // otherwise the projection start omits them while the actual/plan lines (built
+    // from snapshot totals) include them, causing a cliff at today and a false
+    // "behind plan".
+    const entities = Array.from(new Set([...txs.map((t) => t.entity), ...Object.keys(live)])).sort();
     setBaseRows(entities.map((e) => ({
       entity: e,
       // Prefer live market value (latest snapshot), then statement valuation, then cost basis.

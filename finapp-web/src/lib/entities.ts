@@ -38,6 +38,7 @@ export const DEFAULT_ANNUAL_RETURN: Record<string, number> = {
   'Trade Republic': 7.0,  // diversified ETFs
   'DeGiro':         7.0,  // equities/ETFs
   'Kraken':         10.0, // crypto (volatile)
+  'Lego':           3.0,  // collectible sets — modest long-run appreciation
 };
 export const defaultReturn = (entity: string) => DEFAULT_ANNUAL_RETURN[entity] ?? 7.0;
 
@@ -55,6 +56,7 @@ export const DEFAULT_GAINS_TAX: Record<string, number> = {
   'Trade Republic': 28,
   'DeGiro':         28,
   'Kraken':         28,
+  'Lego':           0,  // collectible — no gains tax modelled
 };
 export const defaultTax = (entity: string) => DEFAULT_GAINS_TAX[entity] ?? 28;
 
@@ -70,6 +72,7 @@ export const DEFAULT_TER: Record<string, number> = {
   'DeGiro':         0.2,  // ETFs (direct stocks: set to 0)
   'Banco Invest':   1.5,  // managed PPR
   'SGF':            1.5,  // managed PPR
+  'Lego':           0,
 };
 export const defaultTer = (entity: string) => DEFAULT_TER[entity] ?? 0.2;
 
@@ -84,6 +87,7 @@ export const DEFAULT_MONTHLY_BUY: Record<string, number> = {
   'Trade Republic Cash': 0, // internal cash pot, not a recurring contribution
   'Trade Republic': 1050,
   'SGF':            50,
+  'Lego':           0,  // not a recurring contribution
 };
 
 // Maps the asset_name stored by the Kraken importer to a Yahoo Finance EUR symbol,
