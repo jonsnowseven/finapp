@@ -3,15 +3,17 @@
 @tailwind utilities;
 
 /* Brand accent palettes. --brand-* are "R G B" triplets consumed by the gold-*
-   Tailwind colors. Default (gold) lives on :root; each theme overrides via
-   [data-accent]. Switch by setting document.documentElement.dataset.accent. */
+   Tailwind colors. Default (indigo, Stripe/Mercury-style) lives on :root;
+   each theme overrides via [data-accent]. Switch by setting
+   document.documentElement.dataset.accent. */
 :root,
-[data-accent="gold"]     { --brand-400: 255 225 109; --brand-500: 255 215 0;  --brand-600: 233 196 0;  --brand-700: 185 158 0; }
-[data-accent="emerald"]  { --brand-400: 110 231 183; --brand-500: 16 185 129; --brand-600: 5 150 105;  --brand-700: 4 120 87; }
-[data-accent="sapphire"] { --brand-400: 96 165 250;  --brand-500: 59 130 246; --brand-600: 37 99 235;  --brand-700: 29 78 216; }
-[data-accent="crimson"]  { --brand-400: 251 113 133; --brand-500: 244 63 94;  --brand-600: 225 29 72;  --brand-700: 190 18 60; }
-[data-accent="violet"]   { --brand-400: 167 139 250; --brand-500: 139 92 246; --brand-600: 124 58 237; --brand-700: 109 40 217; }
-[data-accent="platinum"] { --brand-400: 226 232 240; --brand-500: 203 213 225; --brand-600: 148 163 184; --brand-700: 100 116 139; }
+[data-accent="indigo"]   { --brand-200: 208 203 255; --brand-300: 178 171 255; --brand-400: 148 138 255; --brand-500: 99 91 255;  --brand-600: 76 66 255;  --brand-700: 60 50 219; }
+[data-accent="gold"]     { --brand-200: 255 244 189; --brand-300: 255 235 145; --brand-400: 255 225 109; --brand-500: 255 215 0;  --brand-600: 233 196 0;  --brand-700: 185 158 0; }
+[data-accent="emerald"]  { --brand-200: 187 247 222; --brand-300: 148 240 201; --brand-400: 110 231 183; --brand-500: 16 185 129; --brand-600: 5 150 105;  --brand-700: 4 120 87; }
+[data-accent="sapphire"] { --brand-200: 191 219 254; --brand-300: 147 197 253; --brand-400: 96 165 250;  --brand-500: 59 130 246; --brand-600: 37 99 235;  --brand-700: 29 78 216; }
+[data-accent="crimson"]  { --brand-200: 254 205 211; --brand-300: 253 164 175; --brand-400: 251 113 133; --brand-500: 244 63 94;  --brand-600: 225 29 72;  --brand-700: 190 18 60; }
+[data-accent="violet"]   { --brand-200: 221 214 254; --brand-300: 196 181 253; --brand-400: 167 139 250; --brand-500: 139 92 246; --brand-600: 124 58 237; --brand-700: 109 40 217; }
+[data-accent="platinum"] { --brand-200: 248 250 252; --brand-300: 241 245 249; --brand-400: 226 232 240; --brand-500: 203 213 225; --brand-600: 148 163 184; --brand-700: 100 116 139; }
 
 @layer base {
   /* Headings & large numbers use the display face; body stays Inter. */
@@ -41,6 +43,29 @@
   }
   .no-scrollbar { scrollbar-width: none; }
   .no-scrollbar::-webkit-scrollbar { display: none; }
+
+  /* Radial hover glow in the card's --glow-color (set inline via Card's `accent` prop). */
+  .card-glow {
+    position: absolute;
+    inset: -20% -20% auto auto;
+    width: 60%;
+    height: 60%;
+    background: radial-gradient(circle at top right, var(--glow-color, transparent), transparent 70%);
+    opacity: 0;
+    transition: opacity 300ms ease;
+    pointer-events: none;
+  }
+  .group:hover .card-glow { opacity: 0.15; }
+  .dark .group:hover .card-glow { opacity: 0.25; }
+}
+
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.animate-fade-in-up {
+  animation: fadeInUp 0.5s ease-out both;
+  animation-delay: var(--delay, 0ms);
 }
 
 /* Slim dark scrollbars to match the institutional aesthetic. */

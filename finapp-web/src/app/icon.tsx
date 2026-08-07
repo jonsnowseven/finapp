@@ -1,6 +1,6 @@
 import { ImageResponse } from 'next/og';
 
-// Generated favicon: gold "F" on black, matching the app's Black & Gold theme.
+// Generated favicon: indigo "F" on black, matching the app's bold-fintech theme.
 export const size = { width: 32, height: 32 };
 export const contentType = 'image/png';
 
@@ -16,7 +16,7 @@ export default function Icon() {
           justifyContent: 'center',
           background: '#0a0a0a',
           borderRadius: 7,
-          color: '#D4AF37',
+          color: '#635bff',
           fontSize: 24,
           fontWeight: 700,
           fontFamily: 'sans-serif',

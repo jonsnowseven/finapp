@@ -25,10 +25,10 @@ const NAV = [
 function Brand() {
   return (
     <Link href="/" className="flex items-center gap-2.5">
-      <span className="grid place-items-center w-8 h-8 rounded-lg bg-gold-500 text-black shadow-[0_0_16px_-4px_rgb(var(--brand-500)/0.6)]">
+      <span className="grid place-items-center w-8 h-8 rounded-lg bg-brand-500 text-black shadow-[0_0_16px_-4px_rgb(var(--brand-500)/0.6)]">
         <Landmark size={18} strokeWidth={1.75} />
       </span>
-      <span className="text-lg font-bold font-display tracking-tight text-gray-900 dark:text-gold-500">FinApp</span>
+      <span className="text-lg font-bold font-display tracking-tight text-gray-900 dark:text-brand-500">FinApp</span>
     </Link>
   );
 }
@@ -39,7 +39,7 @@ function AccentSwitcher() {
     <div className="flex items-center gap-2">
       {ACCENTS.map((a) => (
         <button key={a.id} onClick={() => setAccent(a.id)} title={a.label} aria-label={`${a.label} theme`}
-          className={`w-4 h-4 rounded-full transition-transform hover:scale-110 ${accent === a.id ? 'ring-2 ring-offset-2 ring-offset-white dark:ring-offset-void ring-gray-400 dark:ring-white/60' : ''}`}
+          className={`w-4 h-4 rounded-full transition-transform hover:scale-110 active:scale-95 ${accent === a.id ? 'ring-2 ring-offset-2 ring-offset-white dark:ring-offset-void ring-gray-400 dark:ring-white/60' : ''}`}
           style={{ backgroundColor: a.color }} />
       ))}
     </div>
@@ -67,9 +67,9 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   if (!user) return <>{children}</>;
 
   const navItem = (active: boolean) =>
-    `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+    `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 ${
       active
-        ? 'bg-indigo-50 text-indigo-700 dark:bg-gold-500/10 dark:text-gold-400 border-l-2 border-indigo-600 dark:border-gold-500 pl-[10px]'
+        ? 'bg-indigo-50 text-indigo-700 dark:bg-brand-500/10 dark:text-brand-400 border-l-2 border-indigo-600 dark:border-brand-500 pl-[10px]'
         : 'text-gray-600 dark:text-ink-muted hover:bg-gray-50 dark:hover:bg-surface-3 border-l-2 border-transparent pl-[10px]'
     }`;
 
@@ -119,7 +119,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
             const active = pathname === href;
             return (
               <Link key={href} href={href}
-                className={`label-caps whitespace-nowrap px-3 py-1.5 rounded-md ${active ? 'bg-gold-500 text-black' : 'text-gray-500 dark:text-ink-muted hover:bg-gray-100 dark:hover:bg-surface-3'}`}>
+                className={`label-caps whitespace-nowrap px-3 py-1.5 rounded-md ${active ? 'bg-brand-500 text-black' : 'text-gray-500 dark:text-ink-muted hover:bg-gray-100 dark:hover:bg-surface-3'}`}>
                 {label}
               </Link>
             );

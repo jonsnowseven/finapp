@@ -101,7 +101,7 @@ export default function TransactionsPage() {
     'Aforro':         'bg-rose-100 text-rose-800 dark:bg-rose-500/15 dark:text-rose-300 dark:border-rose-500/30',
   };
   const entityColor = (e: string) =>
-    ENTITY_COLORS[e] ?? 'bg-gray-100 text-gray-800 dark:bg-gold-500/20 dark:text-gold-400 dark:border-line';
+    ENTITY_COLORS[e] ?? 'bg-gray-100 text-gray-800 dark:bg-brand-500/20 dark:text-brand-400 dark:border-line';
 
   return (
     <main className="max-w-7xl mx-auto p-6 md:p-8">
@@ -236,14 +236,14 @@ export default function TransactionsPage() {
         </div>
       </div>
 
-      {/* Filter Toolbar Styled for Black/Gold */}
+      {/* Filter toolbar */}
       <div className="bg-white dark:bg-surface p-4 rounded-xl border border-gray-200 dark:border-line shadow-sm flex flex-wrap gap-4 mb-6 transition-colors duration-200">
         <div className="flex flex-col">
           <label className="label-caps text-gray-400 dark:text-ink-muted mb-1">Filter by Entity</label>
           <select 
             value={selectedEntity} 
             onChange={(e) => setSelectedEntity(e.target.value)}
-            className="bg-gray-50 dark:bg-surface-2 border border-gray-300 dark:border-line text-sm rounded-lg p-2 focus:ring-indigo-500 dark:focus:ring-gold-500 focus:border-indigo-500 dark:focus:border-gold-500 text-gray-900 dark:text-white outline-none transition-colors"
+            className="bg-gray-50 dark:bg-surface-2 border border-gray-300 dark:border-line text-sm rounded-lg p-2 focus:ring-indigo-500 dark:focus:ring-brand-500 focus:border-indigo-500 dark:focus:border-brand-500 text-gray-900 dark:text-white outline-none transition-colors"
           >
             {entities.map(ent => <option key={ent} value={ent}>{ent}</option>)}
           </select>
@@ -254,7 +254,7 @@ export default function TransactionsPage() {
           <select 
             value={selectedType} 
             onChange={(e) => setSelectedType(e.target.value)}
-            className="bg-gray-50 dark:bg-surface-2 border border-gray-300 dark:border-line text-sm rounded-lg p-2 focus:ring-indigo-500 dark:focus:ring-gold-500 focus:border-indigo-500 dark:focus:border-gold-500 text-gray-900 dark:text-white outline-none transition-colors"
+            className="bg-gray-50 dark:bg-surface-2 border border-gray-300 dark:border-line text-sm rounded-lg p-2 focus:ring-indigo-500 dark:focus:ring-brand-500 focus:border-indigo-500 dark:focus:border-brand-500 text-gray-900 dark:text-white outline-none transition-colors"
           >
             {types.map(t => <option key={t} value={t}>{t}</option>)}
           </select>
@@ -273,15 +273,15 @@ export default function TransactionsPage() {
         </div>
       )}
 
-      {/* Table Styled for Black/Gold */}
+      {/* Table */}
       {loading ? (
-        <div className="text-gray-500 dark:text-gold-500/50 animate-pulse">Loading transaction database...</div>
+        <div className="text-gray-500 dark:text-brand-500/50 animate-pulse">Loading transaction database...</div>
       ) : (
         <div className="bg-white dark:bg-surface rounded-2xl border border-gray-200 dark:border-line shadow-sm overflow-hidden transition-colors duration-200">
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
               <thead>
-                <tr className="bg-gray-50 dark:bg-surface-2 border-b border-gray-200 dark:border-line label-caps text-gray-500 dark:text-gold-500">
+                <tr className="bg-gray-50 dark:bg-surface-2 border-b border-gray-200 dark:border-line label-caps text-gray-500 dark:text-brand-500">
                   <th className="p-4">Date</th>
                   <th className="p-4">Institution</th>
                   <th className="p-4">Asset</th>

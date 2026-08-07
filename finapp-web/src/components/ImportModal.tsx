@@ -124,10 +124,10 @@ export default function ImportModal({ title, description, endpoint, accept = '.p
           onClick={() => inputRef.current?.click()}
           className={`border-2 border-dashed rounded-xl p-6 text-center cursor-pointer transition-colors mb-4
             ${dragging
-              ? 'border-gold-500 bg-gold-500/5'
+              ? 'border-brand-500 bg-brand-500/5'
               : files.length
                 ? 'border-green-400 dark:border-green-500 bg-green-50 dark:bg-green-900/10'
-                : 'border-gray-300 dark:border-line hover:border-gold-500/60 dark:hover:border-gold-500/60'
+                : 'border-gray-300 dark:border-line hover:border-brand-500/60 dark:hover:border-brand-500/60'
             }`}
         >
           <input ref={inputRef} type="file" accept={accept} multiple className="hidden" onChange={(e) => { if (e.target.files?.length) handleFiles(e.target.files); e.target.value = ''; }} />
@@ -190,7 +190,7 @@ export default function ImportModal({ title, description, endpoint, accept = '.p
           <button
             onClick={handleUpload}
             disabled={!files.length || status === 'uploading'}
-            className="flex-1 py-2.5 rounded-xl bg-indigo-600 dark:bg-gold-500 text-white dark:text-black text-sm font-semibold hover:bg-indigo-700 dark:hover:bg-gold-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="flex-1 py-2.5 rounded-xl bg-indigo-600 dark:bg-brand-500 text-white dark:text-black text-sm font-semibold hover:bg-indigo-700 dark:hover:bg-brand-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {status === 'uploading' ? `Importing ${files.length}…` : `Import ${files.length || ''}`.trim()}
           </button>

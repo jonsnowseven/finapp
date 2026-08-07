@@ -109,7 +109,7 @@ export default function HousePage() {
             <Field label="Capital-gains tax">
               <label className="flex items-center gap-2 text-sm mt-1.5 text-gray-700 dark:text-ink">
                 <input type="checkbox" checked={cgtExempt} onChange={(e) => setCgtExempt(e.target.checked)}
-                  className="accent-indigo-600 dark:accent-gold-500" />
+                  className="accent-indigo-600 dark:accent-brand-500" />
                 Reinvesting → exempt
               </label>
             </Field>
@@ -172,7 +172,7 @@ export default function HousePage() {
   );
 }
 
-const inp = 'bg-gray-50 dark:bg-surface-2 border border-gray-300 dark:border-line text-sm rounded-lg px-2 py-1.5 text-gray-900 dark:text-white outline-none focus:border-indigo-500 dark:focus:border-gold-500 w-full';
+const inp = 'bg-gray-50 dark:bg-surface-2 border border-gray-300 dark:border-line text-sm rounded-lg px-2 py-1.5 text-gray-900 dark:text-white outline-none focus:border-indigo-500 dark:focus:border-brand-500 w-full';
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
@@ -194,7 +194,7 @@ function Card({ label, value, sub, accent, good, bad }: { label: string; value: 
   return (
     <div className="bg-white dark:bg-surface p-5 rounded-xl border border-gray-200 dark:border-line">
       <p className="label-caps text-gray-400 dark:text-ink-muted">{label}</p>
-      <p className={`font-num text-2xl mt-2.5 ${good ? 'text-green-600 dark:text-gain' : bad ? 'text-red-500 dark:text-loss' : accent ? 'text-indigo-600 dark:text-gold-500' : 'dark:text-ink'}`}>{value}</p>
+      <p className={`font-num text-2xl mt-2.5 ${good ? 'text-green-600 dark:text-gain' : bad ? 'text-red-500 dark:text-loss' : accent ? 'text-indigo-600 dark:text-brand-500' : 'dark:text-ink'}`}>{value}</p>
       {sub && <p className="text-xs text-gray-400 dark:text-ink-faint mt-1">{sub}</p>}
     </div>
   );

@@ -11,7 +11,7 @@ export const ENTITY_HEX: Record<string, string> = {
   'Aforro':         '#f43f5e', // rose
   'Lego':           '#e3000b', // LEGO red
 };
-export const FALLBACK_HEX = '#D4AF37'; // gold
+export const FALLBACK_HEX = '#635bff'; // indigo (brand accent)
 export const entityHex = (e: string) => ENTITY_HEX[e] ?? FALLBACK_HEX;
 
 // Sign of each transaction type when computing a net contributed/invested balance.

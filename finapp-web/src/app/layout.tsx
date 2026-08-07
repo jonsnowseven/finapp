@@ -3,7 +3,7 @@ import { Hanken_Grotesk, Inter, JetBrains_Mono } from 'next/font/google';
 import { ThemeProvider } from '../components/ThemeProvider';
 import AppShell from '../components/AppShell';
 
-// Midnight Gold typography: Hanken Grotesk (display/numbers), Inter (body),
+// Bold-fintech typography: Hanken Grotesk (display/numbers), Inter (body),
 // JetBrains Mono (labels/ISINs). Self-hosted by next/font — no external CDN.
 const display = Hanken_Grotesk({ subsets: ['latin'], weight: ['600', '700'], variable: '--font-display', display: 'swap' });
 const body = Inter({ subsets: ['latin'], variable: '--font-body', display: 'swap' });
@@ -23,7 +23,7 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning className={`${display.variable} ${body.variable} ${mono.variable}`}>
       <head>
         {/* Apply the saved brand accent before paint to avoid a flash. */}
-        <script dangerouslySetInnerHTML={{ __html: `try{document.documentElement.dataset.accent=localStorage.getItem('finapp_accent')||'gold'}catch(e){}` }} />
+        <script dangerouslySetInnerHTML={{ __html: `try{document.documentElement.dataset.accent=localStorage.getItem('finapp_accent')||'indigo'}catch(e){}` }} />
       </head>
       <body className="min-h-screen bg-gray-50 dark:bg-void text-gray-900 dark:text-ink font-sans antialiased transition-colors duration-200">
         <ThemeProvider

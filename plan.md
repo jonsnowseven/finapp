@@ -5,7 +5,7 @@ Objective: Build a custom, 100% free, personalized financial portfolio monitorin
 The application uses a Monorepo hybrid architecture to handle both the modern web interface and the heavy data extraction processes while keeping hosting costs at $0.
 
 Frontend & UI: Next.js (React / TypeScript) with Tailwind CSS.
-Design System: Custom Dark Mode (Black and Gold aesthetic) and Light Mode.
+Design System: Bold fintech (Mercury/Stripe-style) — crisp white/near-black surfaces, indigo brand accent, switchable per-user (Gold, Emerald, Sapphire, Crimson, Violet, Platinum also available). Light Mode and Dark Mode.
 Authentication: Supabase Auth (Google Account OAuth).
 Database: Supabase PostgreSQL (Free Tier).
 Automated API Engine: Node.js / Serverless functions for Kraken (Crypto) and GoCardless/Nordigen (Revolut Open Banking).

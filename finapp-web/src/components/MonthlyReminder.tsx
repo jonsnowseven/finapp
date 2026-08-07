@@ -37,17 +37,17 @@ export default function MonthlyReminder() {
   }
 
   return (
-    <div className="border-b border-gold-500/30 bg-gold-500/10 dark:bg-gold-500/10">
+    <div className="border-b border-brand-500/30 bg-brand-500/10 dark:bg-brand-500/10">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-2.5 flex items-center gap-3 text-sm">
-        <CalendarClock size={18} className="shrink-0 text-gold-600 dark:text-gold-400" />
+        <CalendarClock size={18} className="shrink-0 text-brand-600 dark:text-brand-400" />
         <p className="flex-1 text-gray-700 dark:text-ink">
           <span className="font-semibold">Monthly import reminder</span>
           <span className="hidden sm:inline text-gray-500 dark:text-ink-muted"> — {prevLabel} statements are usually ready. Import your expenses and transactions.</span>
         </p>
         <Link href="/expenses" onClick={dismiss}
-          className="label-caps shrink-0 px-2.5 py-1 rounded-md bg-gold-500 text-black hover:bg-gold-600 transition-colors">Expenses</Link>
+          className="label-caps shrink-0 px-2.5 py-1 rounded-md bg-brand-500 text-black hover:bg-brand-600 transition-colors">Expenses</Link>
         <Link href="/transactions" onClick={dismiss}
-          className="label-caps shrink-0 px-2.5 py-1 rounded-md border border-gold-500/40 text-gray-700 dark:text-gold-300 hover:bg-gold-500/10 transition-colors">Transactions</Link>
+          className="label-caps shrink-0 px-2.5 py-1 rounded-md border border-brand-500/40 text-gray-700 dark:text-brand-300 hover:bg-brand-500/10 transition-colors">Transactions</Link>
         <button onClick={dismiss} aria-label="Dismiss reminder"
           className="shrink-0 p-1 rounded-md text-gray-400 dark:text-ink-muted hover:text-gray-700 dark:hover:text-ink hover:bg-black/5 dark:hover:bg-white/5">
           <X size={16} />

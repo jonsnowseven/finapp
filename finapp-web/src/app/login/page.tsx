@@ -48,7 +48,7 @@ function LoginContent() {
     <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-black px-4">
       <div className="w-full max-w-sm">
         <div className="text-center mb-10">
-          <h1 className="text-4xl font-bold tracking-tight text-indigo-600 dark:text-gold-500">FinApp</h1>
+          <h1 className="text-4xl font-bold tracking-tight text-indigo-600 dark:text-brand-500">FinApp</h1>
           <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">Personal Portfolio Monitor</p>
         </div>
 

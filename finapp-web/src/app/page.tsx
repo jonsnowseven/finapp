@@ -5,8 +5,13 @@ import { entityHex, typeSign, cryptoSymbol, TR_EUR_SYMBOL, defaultReturn, defaul
 import { xirr, type CashFlow } from '../lib/finance';
 import { summarizeExpenses, type ExpenseRow } from '../lib/expenses';
 import { useHideBalance } from '../lib/useHideBalance';
+import { useCountUp } from '../lib/useCountUp';
+import { useInView } from '../lib/useInView';
+import { useBrandColor } from '../lib/useBrandColor';
 import AllocationPie from '../components/AllocationPie';
 import NetWorthChart from '../components/NetWorthChart';
+import Card from '../components/Card';
+import { AreaChart, Area, ResponsiveContainer } from 'recharts';
 import { RefreshCw, Eye, EyeOff } from 'lucide-react';
 
 interface EntityBalance {
@@ -35,6 +40,14 @@ export default function HomePage() {
 
   // Shared hide-balance state (synced with the Navbar toggle and other tabs).
   const { hidden: hideBalance, toggle: toggleHide, money } = useHideBalance();
+
+  const brand = useBrandColor('500');
+  const animatedTotal = useCountUp(metrics.totalValue);
+  const animatedFees = useCountUp(metrics.totalFees);
+  const animatedOps = useCountUp(metrics.transactionCount);
+  const animatedXirr = useCountUp(xirrRate == null ? 0 : xirrRate * 100, { decimals: 1 });
+  const { ref: chartsRef, inView: chartsInView } = useInView<HTMLDivElement>();
+  const { ref: entitiesRef, inView: entitiesInView } = useInView<HTMLDivElement>();
 
   const [report, setReport] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
@@ -525,51 +538,76 @@ export default function HomePage() {
       </div>
 
       {loading ? (
-        <div className="text-gray-500 dark:text-gold-500/50 animate-pulse">Loading portfolio insights...</div>
+        <div className="text-gray-500 dark:text-brand-500/50 animate-pulse">Loading portfolio insights...</div>
       ) : (
         <>
-          {/* Top summary row */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-            <div className="bg-white dark:bg-surface p-6 rounded-xl border border-gray-200 dark:border-line transition-colors duration-200">
-              <p className="label-caps text-gray-400 dark:text-ink-muted">Total Portfolio Value</p>
-              <p className="font-num text-3xl mt-3 text-indigo-600 dark:text-gold-500">{money(metrics.totalValue)}</p>
-              <p className="text-xs text-gray-400 dark:text-ink-faint mt-2">Valuation where available, else net invested</p>
+          {/* Hero: total value + inline sparkline, stat chips along the bottom edge */}
+          <Card accent={brand} hover={false} className="mb-6">
+            <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-6">
+              <div>
+                <p className="label-caps text-gray-400 dark:text-ink-muted">Total Portfolio Value</p>
+                <p className="font-num text-5xl mt-3 text-indigo-600 dark:text-brand-500">
+                  {hideBalance ? '••••••' : `€${animatedTotal.toLocaleString('pt-PT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+                </p>
+                <p className="text-xs text-gray-400 dark:text-ink-faint mt-2">Valuation where available, else net invested</p>
+              </div>
+              {snapshots.length >= 2 && !hideBalance && (
+                <div className="w-full md:w-56 h-16 shrink-0">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={snapshots} margin={{ top: 2, right: 2, left: 2, bottom: 0 }}>
+                      <defs>
+                        <linearGradient id="heroGrad" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor={brand} stopOpacity={0.35} />
+                          <stop offset="95%" stopColor={brand} stopOpacity={0.02} />
+                        </linearGradient>
+                      </defs>
+                      <Area type="monotone" dataKey="total" stroke={brand} strokeWidth={2} fill="url(#heroGrad)" dot={false}
+                        isAnimationActive animationDuration={800} animationEasing="ease-out" />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                </div>
+              )}
             </div>
-            <div className="bg-white dark:bg-surface p-6 rounded-xl border border-gray-200 dark:border-line transition-colors duration-200">
-              <p className="label-caps text-gray-400 dark:text-ink-muted">Return (XIRR)</p>
-              <p className={`font-num text-3xl mt-3 ${xirrRate == null ? 'text-gray-400 dark:text-ink-faint' : xirrRate >= 0 ? 'text-green-600 dark:text-gain' : 'text-red-500 dark:text-loss'}`}>
-                {xirrRate == null ? '—' : `${(xirrRate * 100).toFixed(1)}%`}
-              </p>
-              <p className="text-xs text-gray-400 dark:text-ink-faint mt-2">Money-weighted annual return</p>
-            </div>
-            <div className="bg-white dark:bg-surface p-6 rounded-xl border border-gray-200 dark:border-line transition-colors duration-200">
-              <p className="label-caps text-gray-400 dark:text-ink-muted">Tracked Operations</p>
-              <p className="font-num text-3xl mt-3 dark:text-ink">{metrics.transactionCount} <span className="text-base text-gray-400 dark:text-ink-muted font-sans">items</span></p>
-            </div>
-            <div className="bg-white dark:bg-surface p-6 rounded-xl border border-gray-200 dark:border-line transition-colors duration-200">
-              <p className="label-caps text-gray-400 dark:text-ink-muted">Total Fees Paid</p>
-              <p className="font-num text-3xl mt-3 text-red-500 dark:text-loss">{money(metrics.totalFees)}</p>
-            </div>
-          </div>
 
-          <div className={`relative grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6 ${hideBalance ? 'blur-sm select-none pointer-events-none' : ''}`}>
+            <div className="mt-6 pt-5 border-t border-gray-100 dark:border-line flex flex-wrap gap-x-10 gap-y-4">
+              <div>
+                <p className="label-caps text-gray-400 dark:text-ink-muted">Return (XIRR)</p>
+                <p className={`font-num text-xl mt-1.5 ${xirrRate == null ? 'text-gray-400 dark:text-ink-faint' : xirrRate >= 0 ? 'text-green-600 dark:text-gain' : 'text-red-500 dark:text-loss'}`}>
+                  {xirrRate == null ? '—' : `${animatedXirr.toFixed(1)}%`}
+                </p>
+              </div>
+              <div>
+                <p className="label-caps text-gray-400 dark:text-ink-muted">Tracked Operations</p>
+                <p className="font-num text-xl mt-1.5 dark:text-ink">{Math.round(animatedOps)} <span className="text-sm text-gray-400 dark:text-ink-muted font-sans">items</span></p>
+              </div>
+              <div>
+                <p className="label-caps text-gray-400 dark:text-ink-muted">Total Fees Paid</p>
+                <p className="font-num text-xl mt-1.5 text-red-500 dark:text-loss">
+                  {hideBalance ? '••••••' : `€${animatedFees.toLocaleString('pt-PT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+                </p>
+              </div>
+            </div>
+          </Card>
+
+          <div
+            ref={chartsRef}
+            className={`relative grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6 transition-all duration-500 ${chartsInView ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-2'} ${hideBalance ? 'blur-sm select-none pointer-events-none' : ''}`}
+          >
             <NetWorthChart data={snapshots} />
             <AllocationPie data={entityBalances.map((b) => ({ name: b.entity, value: b.valuation ?? b.balance }))} />
           </div>
 
           {/* Per-entity balance widgets */}
           <p className="label-caps text-gray-400 dark:text-ink-muted mb-3">Balance by Institution</p>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            {entityBalances.map(({ entity, balance, count, valuation, valuationDate, info }) => (
-              <div
+          <div ref={entitiesRef} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {entityBalances.map(({ entity, balance, count, valuation, valuationDate, info }, i) => (
+              <Card
                 key={entity}
-                className="group bg-white dark:bg-surface p-5 pl-6 rounded-xl border border-gray-200 dark:border-line hover:border-gray-300 dark:hover:border-line-2 transition-colors duration-200 relative overflow-hidden"
+                accent={entityHex(entity)}
+                glow
+                className={`p-5 pl-6 ${entitiesInView ? 'animate-fade-in-up' : 'opacity-0'}`}
+                style={{ '--delay': `${i * 60}ms` } as React.CSSProperties}
               >
-                {/* Institutional 4px accent border */}
-                <span
-                  className="absolute left-0 top-0 bottom-0 w-1"
-                  style={{ backgroundColor: entityHex(entity) }}
-                />
                 <div className="flex items-center gap-2 mb-2">
                   <span className="inline-block w-2 h-2 rounded-full" style={{ backgroundColor: entityHex(entity) }} />
                   <p className="label-caps text-gray-600 dark:text-ink-muted" style={{ letterSpacing: '0.06em' }}>{entity}</p>
@@ -579,7 +617,7 @@ export default function HomePage() {
                   {info && (
                     <span
                       title={info}
-                      className="cursor-help text-gray-300 dark:text-ink-faint hover:text-gray-500 dark:hover:text-gold-400 transition-colors text-sm"
+                      className="cursor-help text-gray-300 dark:text-ink-faint hover:text-gray-500 dark:hover:text-brand-400 transition-colors text-sm"
                       aria-label="How this valuation is calculated"
                     >
                       ⓘ
@@ -593,12 +631,12 @@ export default function HomePage() {
                 ) : (
                   <p className="text-xs text-gray-400 dark:text-ink-faint mt-1.5">{count} operation{count !== 1 ? 's' : ''}</p>
                 )}
-              </div>
+              </Card>
             ))}
           </div>
 
           {/* Portfolio report for AI */}
-          <div className="mt-8 bg-white dark:bg-surface p-6 rounded-2xl border border-gray-200 dark:border-line">
+          <Card hover={false} className="mt-8">
             <div className="flex items-center justify-between flex-wrap gap-3">
               <div>
                 <h3 className="text-lg font-bold">Portfolio report</h3>
@@ -606,7 +644,7 @@ export default function HomePage() {
               </div>
               <button
                 onClick={() => { setReport(buildReport()); setCopied(false); }}
-                className="shrink-0 px-4 py-2 rounded-xl bg-indigo-600 dark:bg-gold-500 text-white dark:text-black text-sm font-semibold hover:bg-indigo-700 dark:hover:bg-gold-600 transition-colors"
+                className="shrink-0 px-4 py-2 rounded-xl bg-indigo-600 dark:bg-brand-500 text-white dark:text-black text-sm font-semibold hover:bg-indigo-700 dark:hover:bg-brand-600 transition-colors"
               >
                 {report ? 'Regenerate' : 'Generate report'}
               </button>
@@ -624,7 +662,7 @@ export default function HomePage() {
                 </div>
               </>
             )}
-          </div>
+          </Card>
         </>
       )}
     </main>

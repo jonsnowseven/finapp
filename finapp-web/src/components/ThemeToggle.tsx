@@ -25,7 +25,7 @@ export default function ThemeToggle() {
         else setTheme('light');
       }}
       // Updated the dark: hover and background classes here:
-      className="p-2 rounded-md bg-gray-100 hover:bg-gray-200 dark:bg-surface-2 dark:border dark:border-line dark:hover:bg-surface-3 text-gray-600 dark:text-gold-500 transition-colors"
+      className="p-2 rounded-md bg-gray-100 hover:bg-gray-200 dark:bg-surface-2 dark:border dark:border-line dark:hover:bg-surface-3 text-gray-600 dark:text-brand-500 transition-colors"
       title={`Current theme: ${theme}. Click to change.`}
     >
       {theme === 'light' && <Sun size={18} />}

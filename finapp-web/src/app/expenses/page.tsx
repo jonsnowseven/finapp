@@ -242,7 +242,7 @@ export default function ExpensesPage() {
           <div className="flex rounded-xl border border-gray-300 dark:border-line overflow-hidden mr-1">
             {(['list', 'overview'] as const).map((v) => (
               <button key={v} onClick={() => setView(v)}
-                className={`px-3 py-2 text-sm font-medium capitalize transition-colors ${view === v ? 'bg-indigo-600 dark:bg-gold-500 text-white dark:text-black' : 'text-gray-600 dark:text-ink-muted hover:bg-gray-50 dark:hover:bg-surface-3'}`}>
+                className={`px-3 py-2 text-sm font-medium capitalize transition-colors ${view === v ? 'bg-indigo-600 dark:bg-brand-500 text-white dark:text-black' : 'text-gray-600 dark:text-ink-muted hover:bg-gray-50 dark:hover:bg-surface-3'}`}>
                 {v}
               </button>
             ))}
@@ -269,7 +269,7 @@ export default function ExpensesPage() {
           {tagSel === '__custom'
             ? <Field label="Custom tag"><input value={customTag} onChange={(e) => setCustomTag(e.target.value)} maxLength={30} placeholder="e.g. Gym" className={inp} /></Field>
             : <Field label="Merchant (optional)"><input value={merchant} onChange={(e) => setMerchant(e.target.value)} className={inp} /></Field>}
-          <button onClick={add} disabled={saving} className="px-4 py-2 rounded-xl bg-indigo-600 dark:bg-gold-500 text-white dark:text-black text-sm font-semibold hover:bg-indigo-700 dark:hover:bg-gold-600 disabled:opacity-50">
+          <button onClick={add} disabled={saving} className="px-4 py-2 rounded-xl bg-indigo-600 dark:bg-brand-500 text-white dark:text-black text-sm font-semibold hover:bg-indigo-700 dark:hover:bg-brand-600 disabled:opacity-50">
             {saving ? 'Adding…' : 'Add expense'}
           </button>
         </div>
@@ -305,7 +305,7 @@ export default function ExpensesPage() {
         <span className="ml-auto text-sm text-gray-500 dark:text-gray-400 flex flex-wrap gap-4">
           {tagFilter !== 'All' && (
             <span title="Sum of outflows in the current filter (includes excluded tags)">
-              Filtered ({monthRows.length}) <strong className="text-indigo-600 dark:text-gold-400">{money(filteredOut)}</strong>
+              Filtered ({monthRows.length}) <strong className="text-indigo-600 dark:text-brand-400">{money(filteredOut)}</strong>
             </span>
           )}
           <span>Expenses <strong className="font-num text-red-500 dark:text-loss">{money(expensesTotal)}</strong></span>
@@ -332,7 +332,7 @@ export default function ExpensesPage() {
       </div>
 
       {loading ? (
-        <div className="text-gray-500 dark:text-gold-500/50 animate-pulse">Loading…</div>
+        <div className="text-gray-500 dark:text-brand-500/50 animate-pulse">Loading…</div>
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* By-tag breakdown */}
@@ -340,7 +340,7 @@ export default function ExpensesPage() {
             <p className="label-caps text-gray-400 dark:text-ink-muted mb-4">By tag · {month}</p>
             {byTag.length === 0 ? <p className="text-sm text-gray-400">No expenses this month.</p> : byTag.map((t) => (
               <button key={t.tag} onClick={() => setTagFilter((f) => f === t.tag ? 'All' : t.tag)}
-                className={`w-full text-left mb-2 rounded-lg px-1.5 py-1 -mx-1.5 transition-colors hover:bg-gray-50 dark:hover:bg-surface-3 ${tagFilter === t.tag ? 'bg-gray-100 dark:bg-surface-3 ring-1 ring-indigo-400 dark:ring-gold-500/40' : ''}`}
+                className={`w-full text-left mb-2 rounded-lg px-1.5 py-1 -mx-1.5 transition-colors hover:bg-gray-50 dark:hover:bg-surface-3 ${tagFilter === t.tag ? 'bg-gray-100 dark:bg-surface-3 ring-1 ring-indigo-400 dark:ring-brand-500/40' : ''}`}
                 title={tagFilter === t.tag ? 'Click to clear filter' : `Filter by ${t.label}`}>
                 <div className="flex justify-between text-sm mb-0.5">
                   <span className="flex items-center gap-1.5 text-gray-700 dark:text-gray-300">
@@ -357,8 +357,8 @@ export default function ExpensesPage() {
           {/* List */}
           <div className="lg:col-span-2 bg-white dark:bg-surface rounded-2xl border border-gray-200 dark:border-line overflow-hidden">
             {selected.size > 0 && (
-              <div className="flex flex-wrap items-center gap-3 px-4 py-2.5 bg-indigo-50 dark:bg-gold-500/10 border-b border-gray-200 dark:border-line text-sm">
-                <span className="font-medium text-gray-700 dark:text-gold-200">{selected.size} selected</span>
+              <div className="flex flex-wrap items-center gap-3 px-4 py-2.5 bg-indigo-50 dark:bg-brand-500/10 border-b border-gray-200 dark:border-line text-sm">
+                <span className="font-medium text-gray-700 dark:text-brand-200">{selected.size} selected</span>
                 <span className="text-gray-400">Re-tag as</span>
                 <TagEditor current={EXPENSE_TAGS[0]} onSave={bulkTag} onCancel={() => setSelected(new Set())} saveLabel={bulking ? '…' : 'Apply'} />
                 <button onClick={() => setSelected(new Set())} className="ml-auto text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 text-xs">Clear</button>
@@ -367,12 +367,12 @@ export default function ExpensesPage() {
             <div className="overflow-x-auto">
             <table className="w-full text-left text-sm min-w-[820px]">
               <thead>
-                <tr className="bg-gray-50 dark:bg-surface-2 border-b border-gray-200 dark:border-line label-caps text-gray-500 dark:text-gold-500">
+                <tr className="bg-gray-50 dark:bg-surface-2 border-b border-gray-200 dark:border-line label-caps text-gray-500 dark:text-brand-500">
                   <th className="p-3 w-8">
                     <input type="checkbox" aria-label="Select all"
                       checked={sortedRows.length > 0 && sortedRows.every((r) => selected.has(r.id))}
                       onChange={(e) => setSelected(e.target.checked ? new Set(sortedRows.map((r) => r.id)) : new Set())}
-                      className="accent-indigo-600 dark:accent-gold-500 cursor-pointer" />
+                      className="accent-indigo-600 dark:accent-brand-500 cursor-pointer" />
                   </th>
                   <Th k="date" sort={sort} onSort={toggleSort}>Date</Th>
                   <Th k="tag" sort={sort} onSort={toggleSort}>Tag</Th>
@@ -390,10 +390,10 @@ export default function ExpensesPage() {
                   const c = tagColor(r.tag);
                   const sel = selected.has(r.id);
                   return (
-                  <tr key={r.id} className={`group hover:bg-gray-50 dark:hover:bg-surface-3 ${sel ? 'bg-indigo-50/60 dark:bg-gold-500/5' : ''} ${countsInTotals(r.tag) ? '' : 'opacity-45'}`} title={countsInTotals(r.tag) ? undefined : 'Excluded from expense/income totals'}>
+                  <tr key={r.id} className={`group hover:bg-gray-50 dark:hover:bg-surface-3 ${sel ? 'bg-indigo-50/60 dark:bg-brand-500/5' : ''} ${countsInTotals(r.tag) ? '' : 'opacity-45'}`} title={countsInTotals(r.tag) ? undefined : 'Excluded from expense/income totals'}>
                     <td className="p-3">
                       <input type="checkbox" aria-label="Select row" checked={sel} onChange={() => toggleRow(r.id)}
-                        className="accent-indigo-600 dark:accent-gold-500 cursor-pointer" />
+                        className="accent-indigo-600 dark:accent-brand-500 cursor-pointer" />
                     </td>
                     <td className="p-3 text-gray-600 dark:text-gray-300 whitespace-nowrap">{r.date}</td>
                     <td className="p-3">
@@ -417,7 +417,7 @@ export default function ExpensesPage() {
                           className="block max-w-[180px] truncate text-left text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200">{r.note}</button>
                       ) : (
                         <button onClick={() => { setEditingNoteId(r.id); setErr(null); }} title="Add comment"
-                          className="text-xs text-gray-300 dark:text-gray-600 hover:text-indigo-500 dark:hover:text-gold-400">＋ note</button>
+                          className="text-xs text-gray-300 dark:text-gray-600 hover:text-indigo-500 dark:hover:text-brand-400">＋ note</button>
                       )}
                     </td>
                     <td className={`p-3 text-right font-num whitespace-nowrap ${Number(r.amount) < 0 ? 'text-gray-900 dark:text-ink' : 'text-green-600 dark:text-gain'}`}>
@@ -425,7 +425,7 @@ export default function ExpensesPage() {
                     </td>
                     <td className="p-3 text-right whitespace-nowrap">
                       <button onClick={() => setSimilarFor(r)}
-                        className="opacity-0 group-hover:opacity-100 focus:opacity-100 text-gray-300 dark:text-gray-600 hover:text-indigo-500 dark:hover:text-gold-400 mr-2 transition-opacity"
+                        className="opacity-0 group-hover:opacity-100 focus:opacity-100 text-gray-300 dark:text-gray-600 hover:text-indigo-500 dark:hover:text-brand-400 mr-2 transition-opacity"
                         title="Find similar expenses">
                         <Search size={14} className="inline" />
                       </button>
@@ -445,7 +445,7 @@ export default function ExpensesPage() {
   );
 }
 
-const inp = 'bg-gray-50 dark:bg-surface-2 border border-gray-300 dark:border-line text-sm rounded-lg px-2 py-1.5 text-gray-900 dark:text-white outline-none focus:border-indigo-500 dark:focus:border-gold-500';
+const inp = 'bg-gray-50 dark:bg-surface-2 border border-gray-300 dark:border-line text-sm rounded-lg px-2 py-1.5 text-gray-900 dark:text-white outline-none focus:border-indigo-500 dark:focus:border-brand-500';
 
 // On-demand similar-expense finder. Operates on already-loaded rows (no DB query).
 function SimilarExpensesPanel({ row, rows, money, onClose, onRetag, onSearch }: {
@@ -497,7 +497,7 @@ function SimilarExpensesPanel({ row, rows, money, onClose, onRetag, onSearch }: 
 
         <div className="flex items-center justify-between text-sm mb-2">
           <span className="text-gray-500 dark:text-ink-muted">{matches.length} match{matches.length !== 1 ? 'es' : ''}</span>
-          <button onClick={() => onSearch(q.trim())} className="label-caps px-2.5 py-1 rounded-md bg-indigo-600 dark:bg-gold-500 text-white dark:text-black">Show in list</button>
+          <button onClick={() => onSearch(q.trim())} className="label-caps px-2.5 py-1 rounded-md bg-indigo-600 dark:bg-brand-500 text-white dark:text-black">Show in list</button>
         </div>
 
         <div className="max-h-64 overflow-y-auto">
@@ -539,7 +539,7 @@ function TagEditor({ current, onSave, onCancel, saveLabel }: { current: string; 
           onKeyDown={(e) => { if (e.key === 'Enter') onSave(value); }} className={`${inp} w-28`} />
       )}
       {saveLabel
-        ? <button onClick={() => onSave(value)} className="px-2.5 py-1 rounded-lg bg-indigo-600 dark:bg-gold-500 text-white dark:text-black text-xs font-semibold hover:bg-indigo-700 dark:hover:bg-gold-600" title="Apply">{saveLabel}</button>
+        ? <button onClick={() => onSave(value)} className="px-2.5 py-1 rounded-lg bg-indigo-600 dark:bg-brand-500 text-white dark:text-black text-xs font-semibold hover:bg-indigo-700 dark:hover:bg-brand-600" title="Apply">{saveLabel}</button>
         : <button onClick={() => onSave(value)} className="text-green-600 dark:text-green-400 px-1" title="Save">✓</button>}
       <button onClick={onCancel} className="text-gray-400 hover:text-red-500 px-1" title="Cancel">✕</button>
     </span>
@@ -565,7 +565,7 @@ function Th({ k, sort, onSort, align, children }: {
 }) {
   const active = sort.key === k;
   return (
-    <th className={`p-3 cursor-pointer select-none hover:text-gray-600 dark:hover:text-gold-300 ${align === 'right' ? 'text-right' : ''}`} onClick={() => onSort(k)}>
+    <th className={`p-3 cursor-pointer select-none hover:text-gray-600 dark:hover:text-brand-300 ${align === 'right' ? 'text-right' : ''}`} onClick={() => onSort(k)}>
       <span className={`inline-flex items-center gap-1 ${align === 'right' ? 'flex-row-reverse' : ''}`}>
         {children}
         <span className={active ? '' : 'opacity-0'}>{sort.dir === 'asc' ? '▲' : '▼'}</span>

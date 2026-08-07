@@ -59,7 +59,7 @@ function CustomTooltip({ active, payload, label }: any) {
     <div className="bg-white dark:bg-surface-2 border border-gray-200 dark:border-line rounded-xl shadow-lg p-4 text-xs min-w-[180px]">
       <p className="font-bold text-gray-900 dark:text-white mb-2">{label}</p>
       <p className="text-gray-500 dark:text-gray-400 mb-3">
-        <span className="font-semibold text-indigo-600 dark:text-gold-400">{point.count}</span> transaction{point.count !== 1 ? 's' : ''}
+        <span className="font-semibold text-indigo-600 dark:text-brand-400">{point.count}</span> transaction{point.count !== 1 ? 's' : ''}
       </p>
 
       <p className="text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-1">By Institution</p>
@@ -129,17 +129,17 @@ export default function TransactionChart({ transactions, legendEntities, activeE
               </linearGradient>
             ))}
           </defs>
-          <CartesianGrid strokeDasharray="3 3" stroke="rgba(212,175,55,0.1)" />
+          <CartesianGrid strokeDasharray="3 3" stroke="currentColor" className="text-gray-200 dark:text-line" />
           <XAxis
             dataKey="date"
-            tick={{ fontSize: 11, fill: '#6b7280' }}
+            tick={{ fontSize: 11, fill: '#9ca3af' }}
             tickLine={false}
             axisLine={false}
             tickFormatter={(v) => v.slice(0, 7)}
             interval="preserveStartEnd"
           />
           <YAxis
-            tick={{ fontSize: 11, fill: '#6b7280' }}
+            tick={{ fontSize: 11, fill: '#9ca3af' }}
             tickLine={false}
             axisLine={false}
             allowDecimals={false}
@@ -155,6 +155,9 @@ export default function TransactionChart({ transactions, legendEntities, activeE
               strokeWidth={1.5}
               fill={`url(#grad-${e.replace(/\s+/g, '-')})`}
               dot={false}
+              isAnimationActive
+              animationDuration={800}
+              animationEasing="ease-out"
             />
           ))}
         </AreaChart>

@@ -2,6 +2,7 @@
 import { useCallback, useEffect, useState } from 'react';
 
 export const ACCENTS = [
+  { id: 'indigo', label: 'Indigo', color: '#635bff' },
   { id: 'gold', label: 'Gold', color: '#ffd700' },
   { id: 'emerald', label: 'Emerald', color: '#10b981' },
   { id: 'sapphire', label: 'Sapphire', color: '#3b82f6' },
@@ -16,10 +17,10 @@ const KEY = 'finapp_accent';
 // Brand-accent theme, orthogonal to light/dark (next-themes). Persisted +
 // applied as document.documentElement.dataset.accent (see globals.css).
 export function useAccent() {
-  const [accent, setAccentState] = useState<AccentId>('gold');
+  const [accent, setAccentState] = useState<AccentId>('indigo');
 
   useEffect(() => {
-    const a = (localStorage.getItem(KEY) as AccentId) || 'gold';
+    const a = (localStorage.getItem(KEY) as AccentId) || 'indigo';
     setAccentState(a);
     document.documentElement.dataset.accent = a;
   }, []);

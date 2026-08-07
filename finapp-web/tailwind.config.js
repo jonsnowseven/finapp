@@ -8,8 +8,10 @@ module.exports = {
     extend: {
       colors: {
         // Brand accent — remapped at runtime via --brand-* CSS vars so the
-        // whole app re-themes (see globals.css [data-accent]). Default = gold.
-        gold: {
+        // whole app re-themes (see globals.css [data-accent]). Default = indigo.
+        brand: {
+          200: 'rgb(var(--brand-200) / <alpha-value>)',
+          300: 'rgb(var(--brand-300) / <alpha-value>)',
           400: 'rgb(var(--brand-400) / <alpha-value>)',
           500: 'rgb(var(--brand-500) / <alpha-value>)',
           600: 'rgb(var(--brand-600) / <alpha-value>)',

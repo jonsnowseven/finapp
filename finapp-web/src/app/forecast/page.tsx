@@ -462,7 +462,7 @@ export default function ForecastPage() {
       </div>
 
       {loading ? (
-        <div className="text-gray-500 dark:text-gold-500/50 animate-pulse">Loading…</div>
+        <div className="text-gray-500 dark:text-brand-500/50 animate-pulse">Loading…</div>
       ) : rows.length === 0 ? (
         <div className="text-gray-400">No transactions yet — import some first.</div>
       ) : (
@@ -478,7 +478,7 @@ export default function ForecastPage() {
               <input
                 type="range" min={1} max={40} value={years}
                 onChange={(e) => setYears(Number(e.target.value))}
-                className="w-full mt-2 accent-indigo-600 dark:accent-gold-500"
+                className="w-full mt-2 accent-indigo-600 dark:accent-brand-500"
               />
               <p className="text-2xl font-bold dark:text-white">{years}y</p>
 
@@ -487,7 +487,7 @@ export default function ForecastPage() {
                 <input
                   type="date" value={birthDate}
                   onChange={(e) => updateBirthDate(e.target.value)}
-                  className="w-full mt-1 bg-gray-50 dark:bg-surface-2 border border-gray-300 dark:border-line rounded-lg px-2 py-1 text-sm text-gray-900 dark:text-white outline-none focus:border-indigo-500 dark:focus:border-gold-500"
+                  className="w-full mt-1 bg-gray-50 dark:bg-surface-2 border border-gray-300 dark:border-line rounded-lg px-2 py-1 text-sm text-gray-900 dark:text-white outline-none focus:border-indigo-500 dark:focus:border-brand-500"
                 />
                 {age != null && (
                   <p
@@ -575,7 +575,7 @@ export default function ForecastPage() {
             const rate = monthlyNet > 0 ? (monthlyTotal / monthlyNet) * 100 : null;
             // Savings-rate benchmarks: 20% "pay yourself first" rule; 50%+ = FIRE pace.
             const tier =
-              rate == null ? { cls: 'text-indigo-600 dark:text-gold-400', label: '' }
+              rate == null ? { cls: 'text-indigo-600 dark:text-brand-400', label: '' }
               : rate < 10  ? { cls: 'text-red-500 dark:text-red-400',       label: 'low' }
               : rate < 20  ? { cls: 'text-amber-500 dark:text-amber-400',   label: 'fair' }
               : rate < 30  ? { cls: 'text-green-600 dark:text-green-400',   label: 'on track (20% rule)' }
@@ -617,7 +617,7 @@ export default function ForecastPage() {
                 <button onClick={resetRows} className="px-3 py-1.5 rounded-lg border border-gray-300 dark:border-line text-sm text-gray-600 dark:text-ink-muted hover:bg-gray-50 dark:hover:bg-surface-3">Reset</button>
               )}
               <button onClick={saveRows} disabled={!rowsDirty}
-                className="px-3 py-1.5 rounded-lg bg-indigo-600 dark:bg-gold-500 text-white dark:text-black text-sm font-semibold hover:bg-indigo-700 dark:hover:bg-gold-600 disabled:opacity-50">
+                className="px-3 py-1.5 rounded-lg bg-indigo-600 dark:bg-brand-500 text-white dark:text-black text-sm font-semibold hover:bg-indigo-700 dark:hover:bg-brand-600 disabled:opacity-50">
                 {rowsSaved ? 'Saved ✓' : 'Save'}
               </button>
             </div>
@@ -625,7 +625,7 @@ export default function ForecastPage() {
           <div className="bg-white dark:bg-surface rounded-2xl border border-gray-200 dark:border-line overflow-x-auto">
             <table className="w-full text-left text-sm min-w-[640px]">
               <thead>
-                <tr className="bg-gray-50 dark:bg-surface-2 border-b border-gray-200 dark:border-line label-caps text-gray-500 dark:text-gold-500">
+                <tr className="bg-gray-50 dark:bg-surface-2 border-b border-gray-200 dark:border-line label-caps text-gray-500 dark:text-brand-500">
                   <th className="p-4">Institution</th>
                   <th className="p-4 text-right cursor-pointer select-none" onClick={() => sortBy('start')} title="What this holding is worth today. Pre-filled from your latest valuation or amount invested — editable. Click to sort.">Start value (€){arrow('start')}</th>
                   <th className="p-4 text-right cursor-pointer select-none" onClick={() => sortBy('monthly')} title="Your typical monthly contribution here — editable. Click to sort.">Monthly buy (€){arrow('monthly')}</th>
@@ -739,7 +739,7 @@ export default function ForecastPage() {
                 <div className="flex items-center gap-6 text-sm flex-wrap">
                   <span className="text-gray-500 dark:text-gray-400">Investment draw <strong className="dark:text-white">{fmt(fireCalc.monthlyIncome)}/mo</strong></span>
                   <span className="text-gray-500 dark:text-gray-400">+ Pension (net) <strong className="dark:text-white">{fmt(pensionNet)}/mo</strong> <span className="text-gray-400">(gross {fmt(pensionGross)})</span></span>
-                  <span className="text-gray-700 dark:text-gray-200">= Total retirement income <strong className="text-indigo-600 dark:text-gold-400">{fmt(retirementIncome)}/mo</strong></span>
+                  <span className="text-gray-700 dark:text-gray-200">= Total retirement income <strong className="text-indigo-600 dark:text-brand-400">{fmt(retirementIncome)}/mo</strong></span>
                 </div>
               )}
             </div>
@@ -780,7 +780,7 @@ function Card({ label, value, accent }: { label: string; value: string; accent?:
   return (
     <div className="bg-white dark:bg-surface p-5 rounded-xl border border-gray-200 dark:border-line">
       <p className="label-caps text-gray-400 dark:text-ink-muted">{label}</p>
-      <p className={`font-num text-2xl mt-2.5 ${accent ? 'text-indigo-600 dark:text-gold-500' : 'dark:text-ink'}`}>{value}</p>
+      <p className={`font-num text-2xl mt-2.5 ${accent ? 'text-indigo-600 dark:text-brand-500' : 'dark:text-ink'}`}>{value}</p>
     </div>
   );
 }
@@ -790,7 +790,7 @@ function NumInput({ value, onChange, step = 1 }: { value: number; onChange: (v: 
     <input
       type="number" value={value} step={step}
       onChange={(e) => onChange(Number(e.target.value))}
-      className="w-28 text-right bg-gray-50 dark:bg-surface-2 border border-gray-300 dark:border-line rounded-lg px-2 py-1 text-gray-900 dark:text-white outline-none focus:border-indigo-500 dark:focus:border-gold-500"
+      className="w-28 text-right bg-gray-50 dark:bg-surface-2 border border-gray-300 dark:border-line rounded-lg px-2 py-1 text-gray-900 dark:text-white outline-none focus:border-indigo-500 dark:focus:border-brand-500"
     />
   );
 }
@@ -803,7 +803,7 @@ function ForecastTooltip({ active, payload, label, fmt }: any) {
     <div className="bg-white dark:bg-surface-2 border border-gray-200 dark:border-line rounded-xl shadow-lg p-4 text-xs min-w-[200px]">
       <p className="font-bold text-gray-900 dark:text-white mb-2">{label}</p>
       {total > 0 && (
-        <p className="text-gray-500 dark:text-gray-400 mb-2">Total <span className="font-semibold text-indigo-600 dark:text-gold-400">{fmt(total)}</span></p>
+        <p className="text-gray-500 dark:text-gray-400 mb-2">Total <span className="font-semibold text-indigo-600 dark:text-brand-400">{fmt(total)}</span></p>
       )}
       {rows.map((p: any) => (
         <div key={p.dataKey} className="flex justify-between gap-4 text-gray-700 dark:text-gray-300">
