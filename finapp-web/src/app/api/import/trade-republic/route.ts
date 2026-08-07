@@ -216,16 +216,22 @@ export async function POST(request: Request) {
     const text = await file.text();
     const rows = parseCsv(text);
 
-    // Only import asset transactions (TRADING category or non-empty symbol)
+    // Asset transactions: TRADING category with a non-empty symbol.
     const assetRows = rows.filter(r =>
       r.category === 'TRADING' && r.symbol && r.symbol.trim() !== ''
     );
+    // Cash-at-interest payouts: CASH category, INTEREST_PAYMENT type — same
+    // "Trade Republic Cash" entity the PDF-statement import feeds, so interest
+    // history is complete whichever path (CSV or PDF) was last uploaded.
+    const interestRows = rows.filter(r =>
+      r.category === 'CASH' && r.type === 'INTEREST_PAYMENT'
+    );
 
-    if (assetRows.length === 0) {
-      return NextResponse.json({ error: 'No asset transactions found. Only TRADING rows with a symbol are imported.' }, { status: 422 });
+    if (assetRows.length === 0 && interestRows.length === 0) {
+      return NextResponse.json({ error: 'No asset transactions or interest payments found in this CSV.' }, { status: 422 });
     }
 
-    const records = assetRows.map(r => {
+    const assetRecords = assetRows.map(r => {
       const amount  = Math.abs(parseFloat(r.amount)  || 0);
       const fee     = Math.abs(parseFloat(r.fee)     || 0);
       const qty     = Math.abs(parseFloat(r.shares)  || 0);
@@ -245,6 +251,21 @@ export async function POST(request: Request) {
         source_document:  `tr_${r.transaction_id}`,
       };
     });
+
+    const interestRecords = interestRows.map(r => ({
+      date:             r.date,
+      entity:           'Trade Republic Cash',
+      asset_name:       'Cash at interest',
+      transaction_type: 'interest',
+      quantity:         null,
+      price:            null,
+      amount:           Math.abs(parseFloat(r.amount) || 0),
+      currency:         r.currency || 'EUR',
+      fees:             0,
+      source_document:  `tr_${r.transaction_id}`,
+    }));
+
+    const records = [...assetRecords, ...interestRecords];
 
     const { data, error } = await supabase
       .from('transactions')
