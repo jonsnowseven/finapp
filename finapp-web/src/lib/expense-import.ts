@@ -66,22 +66,50 @@ export function cleanMerchant(desc: string): string {
 
 export interface ParsedRow { date: string; signed: number; desc: string; }
 
-// Santander & ActivoBank exports share the layout after their header row:
-//   col0 = date, col2 = description, col3 = amount (';'-separated, Latin-1).
-export function parseBankCsv(text: string): ParsedRow[] {
-  const lines = text.split(/\r?\n/);
-  const hi = lines.findIndex((l) => { const n = norm(l); return n.includes('DATA LANC') || n.includes('DATA OPERA'); });
+function cellStr(v: unknown): string {
+  return v == null ? '' : String(v).trim();
+}
+
+// Shared by the CSV and XLSX paths: Santander & ActivoBank exports share the
+// layout after their header row — col0 = date, col2 = description, col3 = amount.
+// Amount cells come as raw numbers from XLSX (already signed) but as PT-formatted
+// strings from CSV, so numeric cells are used as-is and strings go through parsePtMoney.
+export function parseBankRows(cellRows: unknown[][]): ParsedRow[] {
+  const hi = cellRows.findIndex((r) => { const n = norm(r.map(cellStr).join(' ')); return n.includes('DATA LANC') || n.includes('DATA OPERA'); });
   const rows: ParsedRow[] = [];
-  for (let i = hi >= 0 ? hi + 1 : 0; i < lines.length; i++) {
-    const line = lines[i];
-    if (!line.trim()) continue;
-    const c = line.split(';');
-    if (c.length < 4) continue;
-    const date = toIso(c[0]);
+  for (let i = hi >= 0 ? hi + 1 : 0; i < cellRows.length; i++) {
+    const c = cellRows[i];
+    if (!c || c.length < 4) continue;
+    const date = toIso(cellStr(c[0]));
     if (!date) continue;
-    rows.push({ date, desc: c[2] ?? '', signed: parsePtMoney(c[3] ?? '') });
+    const amt = c[3];
+    const signed = typeof amt === 'number' ? amt : parsePtMoney(cellStr(amt));
+    rows.push({ date, desc: cellStr(c[2]), signed });
   }
   return rows;
+}
+
+export function parseBankCsv(text: string): ParsedRow[] {
+  return parseBankRows(text.split(/\r?\n/).map((l) => l.split(';')));
+}
+
+// XLSX history export — same column layout as the CSV, one row per statement line.
+// Date cells are Excel serial numbers; decoded via SSF (not a JS Date) so the
+// calendar date doesn't depend on the server process's local timezone.
+export function parseBankXlsx(buf: Buffer): ParsedRow[] {
+  const XLSX = require('xlsx');
+  const wb = XLSX.read(buf, { type: 'buffer' });
+  const sheet = wb.Sheets[wb.SheetNames[0]];
+  const cellRows: unknown[][] = XLSX.utils.sheet_to_json(sheet, { header: 1, raw: true, defval: '' });
+  const withIsoDates = cellRows.map((r) => {
+    if (typeof r[0] !== 'number') return r;
+    const d = XLSX.SSF.parse_date_code(r[0]);
+    if (!d) return r;
+    const out = r.slice();
+    out[0] = `${String(d.d).padStart(2, '0')}-${String(d.m).padStart(2, '0')}-${d.y}`;
+    return out;
+  });
+  return parseBankRows(withIsoDates);
 }
 
 // PDF money token: dot decimal, space thousands (e.g. "1 234.56", "2 450.05").

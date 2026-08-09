@@ -218,9 +218,9 @@ export default function ExpensesPage() {
           onClose={() => setImp(null)} onImported={() => { setImp(null); fetchRows(); }} />
       )}
       {imp === 'activobank' && (
-        <ImportModal title="Import ActivoBank" description="Upload an ActivoBank statement (PDF) or history CSV"
-          endpoint="/api/import/expenses/activobank" accept=".pdf,.csv"
-          hint="ActivoBank → Conta → Extrato (PDF) or Histórico → export as CSV. PDF combined statement supported."
+        <ImportModal title="Import ActivoBank" description="Upload an ActivoBank statement (PDF) or history CSV/XLSX"
+          endpoint="/api/import/expenses/activobank" accept=".pdf,.csv,.xlsx"
+          hint="ActivoBank → Conta → Extrato (PDF) or Histórico → export as CSV or XLSX. PDF combined statement supported."
           onClose={() => setImp(null)} onImported={() => { setImp(null); fetchRows(); }} />
       )}
       {similarFor && (

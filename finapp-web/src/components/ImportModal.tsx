@@ -30,9 +30,11 @@ export default function ImportModal({ title, description, endpoint, accept = '.p
   const inputRef = useRef<HTMLInputElement>(null);
 
   const acceptedTypes = accept.split(',').map(s => s.trim());
-  const acceptedMime = acceptedTypes.includes('.csv')
-    ? ['text/csv', 'application/csv', 'text/plain']
-    : ['application/pdf'];
+  const acceptedMime = [
+    ...(acceptedTypes.includes('.pdf') ? ['application/pdf'] : []),
+    ...(acceptedTypes.includes('.csv') ? ['text/csv', 'application/csv', 'text/plain'] : []),
+    ...(acceptedTypes.includes('.xlsx') ? ['application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'] : []),
+  ];
 
   function isValid(f: File): boolean {
     const ext = '.' + f.name.split('.').pop()?.toLowerCase();
