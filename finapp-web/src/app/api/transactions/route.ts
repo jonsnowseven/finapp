@@ -1,0 +1,52 @@
+import { requireApiUser } from '../../../lib/api-auth';
+import { NextResponse } from 'next/server';
+import { createClient } from '@supabase/supabase-js';
+
+function db() {
+  return createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
+}
+
+// Add one manually-entered transaction (no source_document — not tied to an import).
+export async function POST(request: Request) {
+  const guard = await requireApiUser();
+  if (guard) return guard;
+  try {
+    const b = await request.json();
+
+    const date = String(b?.date ?? '');
+    const entity = String(b?.entity ?? '').trim();
+    const assetName = String(b?.asset_name ?? '').trim();
+    const transactionType = String(b?.transaction_type ?? '').trim();
+    const amount = Number(b?.amount);
+
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return NextResponse.json({ error: 'Valid date required' }, { status: 400 });
+    if (!entity) return NextResponse.json({ error: 'Entity required' }, { status: 400 });
+    if (!assetName) return NextResponse.json({ error: 'Asset name required' }, { status: 400 });
+    if (!transactionType) return NextResponse.json({ error: 'Transaction type required' }, { status: 400 });
+    if (!isFinite(amount) || amount === 0) return NextResponse.json({ error: 'Non-zero amount required' }, { status: 400 });
+
+    const quantity = b?.quantity !== undefined && b.quantity !== '' ? Number(b.quantity) : null;
+    const price = b?.price !== undefined && b.price !== '' ? Number(b.price) : null;
+    const fees = b?.fees !== undefined && b.fees !== '' ? Number(b.fees) : 0;
+
+    const row = {
+      date,
+      entity,
+      asset_name: assetName,
+      isin: b?.isin?.trim() || null,
+      transaction_type: transactionType,
+      quantity: quantity !== null && isFinite(quantity) ? quantity : null,
+      price: price !== null && isFinite(price) ? price : null,
+      amount: Math.abs(amount),
+      currency: b?.currency?.trim() || 'EUR',
+      fees: isFinite(fees) ? Math.abs(fees) : 0,
+      source_document: null,
+    };
+
+    const { data, error } = await db().from('transactions').insert(row).select().maybeSingle();
+    if (error) throw error;
+    return NextResponse.json({ ok: true, row: data });
+  } catch (err: any) {
+    return NextResponse.json({ error: err.message }, { status: 500 });
+  }
+}

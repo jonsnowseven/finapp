@@ -3,7 +3,8 @@ import { useCallback, useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase';
 import TransactionChart from '../../components/TransactionChart';
 import ImportModal from '../../components/ImportModal';
-import { RefreshCw, Upload, ChevronDown } from 'lucide-react';
+import AddTransactionModal, { TransactionSeed } from '../../components/AddTransactionModal';
+import { RefreshCw, Upload, ChevronDown, Plus, Copy } from 'lucide-react';
 import { useHideBalance } from '../../lib/useHideBalance';
 import EyeToggle from '../../components/EyeToggle';
 
@@ -29,6 +30,8 @@ export default function TransactionsPage() {
   const [refreshing, setRefreshing] = useState(false);
   const [showImport, setShowImport] = useState<'kraken' | 'degiro' | 'tr' | 'bancoinvest' | 'sgf' | 'revolut' | 'aforro' | null>(null);
   const [showImportMenu, setShowImportMenu] = useState(false);
+  const [showAdd, setShowAdd] = useState(false);
+  const [duplicateSeed, setDuplicateSeed] = useState<TransactionSeed | null>(null);
 
   const [selectedEntity, setSelectedEntity] = useState('All');
   const [selectedType, setSelectedType] = useState('All');
@@ -176,6 +179,14 @@ export default function TransactionsPage() {
           onImported={() => { setShowImport(null); handleRefresh(); }}
         />
       )}
+      {(showAdd || duplicateSeed) && (
+        <AddTransactionModal
+          entitySuggestions={entities.filter(e => e !== 'All')}
+          initial={duplicateSeed ?? undefined}
+          onClose={() => { setShowAdd(false); setDuplicateSeed(null); }}
+          onAdded={() => { setShowAdd(false); setDuplicateSeed(null); handleRefresh(); }}
+        />
+      )}
 
       <div className="flex items-start justify-between mb-8">
         <div>
@@ -183,6 +194,14 @@ export default function TransactionsPage() {
           <p className="text-gray-500 dark:text-gray-400 text-sm">Review, sort, and isolate operations recorded in your system.</p>
         </div>
         <div className="flex items-center gap-2 mt-1">
+          <button
+            onClick={() => setShowAdd(true)}
+            className="flex items-center gap-2 px-3 py-2 rounded-xl border border-gray-300 dark:border-line text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-surface-3 transition-colors"
+          >
+            <Plus size={14} />
+            Add manual
+          </button>
+
           {/* Import dropdown */}
           <div className="relative">
             <button
@@ -288,16 +307,17 @@ export default function TransactionsPage() {
                   <th className="p-4">ISIN</th>
                   <th className="p-4">Type</th>
                   <th className="p-4 text-right">Amount</th>
+                  <th className="p-4 w-10"></th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100 dark:divide-gray-800/50 text-sm">
                 {filteredTransactions.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="p-8 text-center text-gray-400 dark:text-gray-500">No transactions match your filtering constraints.</td>
+                    <td colSpan={7} className="p-8 text-center text-gray-400 dark:text-gray-500">No transactions match your filtering constraints.</td>
                   </tr>
                 ) : (
                   filteredTransactions.map((tx) => (
-                    <tr key={tx.id} className="hover:bg-gray-50 dark:hover:bg-surface-3 transition-colors">
+                    <tr key={tx.id} className="hover:bg-gray-50 dark:hover:bg-surface-3 transition-colors group">
                       <td className="p-4 font-medium text-gray-600 dark:text-gray-300">{tx.date}</td>
                       <td className="p-4">
                         {/* Styled tag badge */}
@@ -311,6 +331,26 @@ export default function TransactionsPage() {
                         <span className="inline-block px-2 py-0.5 rounded-full text-xs font-semibold capitalize bg-gray-100 text-gray-600 dark:bg-surface-3 dark:text-ink-muted">{tx.transaction_type}</span>
                       </td>
                       <td className="p-4 text-right font-num text-gray-900 dark:text-ink">{money(Number(tx.amount))}</td>
+                      <td className="p-4">
+                        <button
+                          onClick={() => setDuplicateSeed({
+                            date: tx.date,
+                            entity: tx.entity,
+                            asset_name: tx.asset_name,
+                            isin: tx.isin,
+                            transaction_type: tx.transaction_type,
+                            quantity: tx.quantity,
+                            price: tx.price,
+                            amount: Number(tx.amount),
+                            currency: tx.currency,
+                            fees: tx.fees,
+                          })}
+                          title="Duplicate as new transaction"
+                          className="text-gray-300 dark:text-gray-600 opacity-0 group-hover:opacity-100 hover:text-indigo-600 dark:hover:text-brand-400 transition-all"
+                        >
+                          <Copy size={14} />
+                        </button>
+                      </td>
                     </tr>
                   ))
                 )}
