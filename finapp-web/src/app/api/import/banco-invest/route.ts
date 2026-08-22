@@ -12,6 +12,96 @@ function ptDate(s: string): string {
   return m ? `${m[3]}-${m[2]}-${m[1]}` : '';
 }
 
+// Google Sheets exports this statement with US-locale numbers regardless of
+// content: thousands-comma, decimal-dot (e.g. "4,135.67", "193.9900").
+function usNum(s: string): number {
+  return parseFloat(s.replace(/,/g, '')) || 0;
+}
+
+// Handles a comma inside one quoted field (the VALOR total, e.g. "4,135.67").
+function splitCsvLine(line: string): string[] {
+  const out: string[] = [];
+  let cur = '';
+  let inQuotes = false;
+  for (let i = 0; i < line.length; i++) {
+    const c = line[i];
+    if (inQuotes) {
+      if (c === '"') {
+        if (line[i + 1] === '"') { cur += '"'; i++; }
+        else inQuotes = false;
+      } else cur += c;
+    } else if (c === '"') inQuotes = true;
+    else if (c === ',') { out.push(cur); cur = ''; }
+    else cur += c;
+  }
+  out.push(cur);
+  return out;
+}
+
+// CSV export of the same "Posição Actual" statement the PDF path below
+// parses — mobile app only offers CSV/XLSX, and its PDF export truncates
+// year digits unpredictably (a rendering bug, not a parseable pattern), so
+// CSV is the reliable source when importing from mobile.
+function parseBancoInvestCsv(text: string): {
+  records: ReturnType<typeof parseBancoInvestPdf>;
+  valuation: ReturnType<typeof parseBancoInvestValuation>;
+} {
+  const rows = text.split('\n').map(l => l.trim()).filter(Boolean).map(splitCsvLine);
+
+  let account = 'unknown';
+  for (let i = 0; i < rows.length; i++) {
+    if (/^CONTA$/i.test(rows[i][0] ?? '') && /^\d{5,}$/.test(rows[i + 1]?.[0] ?? '')) {
+      account = rows[i + 1][0].trim();
+      break;
+    }
+  }
+
+  const dateRow = rows.find(r => /^\d{2}-\d{2}-\d{4}$/.test(r[0] ?? ''));
+  const as_of_date = dateRow ? ptDate(dateRow[0]) : new Date().toISOString().slice(0, 10);
+
+  let valuation: { as_of_date: string; value: number; units: number | null } | null = null;
+  const summaryHeaderIdx = rows.findIndex(r => /^TITULAR$/i.test(r[0] ?? '') && /IN[ÍI]CIO/i.test(r[1] ?? ''));
+  if (summaryHeaderIdx >= 0 && rows[summaryHeaderIdx + 1]) {
+    const sr = rows[summaryHeaderIdx + 1];
+    const units = usNum(sr[2] ?? '');
+    const value = usNum(sr[7] ?? '');
+    if (value) valuation = { as_of_date, value, units: units || null };
+  }
+
+  const lotsHeaderIdx = rows.findIndex(r => /^TIPO$/i.test(r[0] ?? '') && /DATA/i.test(r[1] ?? ''));
+  const records: ReturnType<typeof parseBancoInvestPdf> = [];
+  let rowIdx = 0;
+  if (lotsHeaderIdx >= 0) {
+    for (let i = lotsHeaderIdx + 1; i < rows.length; i++) {
+      const r = rows[i];
+      if (!r[0] || /bancoinvest\.pt/i.test(r[0])) break;
+      if (!/^\d{2}-\d{2}-\d{4}$/.test(r[1] ?? '')) continue;
+
+      const date = ptDate(r[1]);
+      const qty = usNum(r[2] ?? '');
+      const price = usNum(r[3] ?? '');
+      if (!date || qty === 0 || price === 0) continue;
+
+      const amount = parseFloat((qty * price).toFixed(2));
+      records.push({
+        date,
+        entity: 'Banco Invest',
+        asset_name: 'Alves Ribeiro PPR',
+        transaction_type: 'buy',
+        quantity: qty,
+        price,
+        amount,
+        currency: 'EUR',
+        fees: 0,
+        source_document: `bancoinvest_${account}_${date}_${rowIdx}`,
+      });
+      rowIdx++;
+    }
+  }
+
+  return { records, valuation };
+}
+
 function parseBancoInvestPdf(text: string) {
   const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
 
@@ -104,18 +194,30 @@ export async function POST(request: Request) {
   const guard = await requireApiUser();
   if (guard) return guard;
   try {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const pdfParse: (buf: Buffer) => Promise<{ text: string }> = require('pdf-parse');
     const formData = await request.formData();
     const file = formData.get('file') as File | null;
     if (!file) return NextResponse.json({ error: 'No file uploaded' }, { status: 400 });
 
-    const buffer = Buffer.from(await file.arrayBuffer());
-    const pdf = await pdfParse(buffer);
-    const records = parseBancoInvestPdf(pdf.text);
+    const isCsv = /\.csv$/i.test(file.name) || file.type === 'text/csv';
 
-    if (records.length === 0) {
-      return NextResponse.json({ error: 'No subscriptions found in PDF. Check the file format.' }, { status: 422 });
+    let records: ReturnType<typeof parseBancoInvestPdf>;
+    let val: ReturnType<typeof parseBancoInvestValuation>;
+
+    if (isCsv) {
+      const parsed = parseBancoInvestCsv(await file.text());
+      records = parsed.records;
+      val = parsed.valuation;
+    } else {
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      const pdfParse: (buf: Buffer) => Promise<{ text: string }> = require('pdf-parse');
+      const buffer = Buffer.from(await file.arrayBuffer());
+      const pdf = await pdfParse(buffer);
+      records = parseBancoInvestPdf(pdf.text);
+      val = parseBancoInvestValuation(pdf.text);
+    }
+
+    if (records.length === 0 && !val) {
+      return NextResponse.json({ error: 'No subscriptions or valuation found. Check the file format.' }, { status: 422 });
     }
 
     const supabase = createClient(
@@ -123,15 +225,13 @@ export async function POST(request: Request) {
       process.env.SUPABASE_SERVICE_ROLE_KEY!
     );
 
-    const { data, error } = await supabase
-      .from('transactions')
-      .upsert(records, { onConflict: 'source_document' })
-      .select();
+    const { data, error } = records.length > 0
+      ? await supabase.from('transactions').upsert(records, { onConflict: 'source_document' }).select()
+      : { data: [], error: null };
 
     if (error) throw error;
 
     // Store the statement's current valuation (best-effort)
-    const val = parseBancoInvestValuation(pdf.text);
     if (val) {
       await supabase.from('valuations').upsert(
         {
