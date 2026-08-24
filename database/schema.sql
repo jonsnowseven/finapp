@@ -183,3 +183,28 @@ create policy "authenticated read valuations"
 revoke all on public.valuations from anon;
 grant select on public.valuations to authenticated;
 grant all on public.valuations to service_role;
+
+-- Digital-legacy report: platforms/accounts a family member would need to
+-- find in the event of death. Deliberately holds only POINTERS to where a
+-- password/2FA method lives (password manager, physical safe, lawyer...),
+-- never the credential itself.
+create table if not exists legacy_accounts (
+  id uuid default gen_random_uuid() primary key,
+  created_at timestamp with time zone default timezone('utc'::text, now()) not null,
+  category text,               -- e.g. 'Investments', 'Insurance', 'Government', 'Crypto', 'Documents'
+  name text not null,          -- e.g. 'DeGiro'
+  platform text,               -- site/URL
+  password_location text,      -- WHERE the password lives, never the password
+  two_fa text,                 -- 2FA method/location, e.g. 'FIDO2 key in safe'
+  is_physical boolean default false,  -- physical asset/document (no online account)
+  storage text,                 -- WHERE the physical item/document is kept
+  notes text,
+  sort_order integer default 0
+);
+alter table legacy_accounts enable row level security;
+drop policy if exists "authenticated read legacy_accounts" on public.legacy_accounts;
+create policy "authenticated read legacy_accounts"
+  on public.legacy_accounts for select to authenticated using (true);
+revoke all on public.legacy_accounts from anon;
+grant select on public.legacy_accounts to authenticated;
+grant all on public.legacy_accounts to service_role;
