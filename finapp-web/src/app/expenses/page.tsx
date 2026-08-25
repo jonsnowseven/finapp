@@ -212,9 +212,9 @@ export default function ExpensesPage() {
   return (
     <main className="max-w-7xl mx-auto p-6 md:p-8">
       {imp === 'santander' && (
-        <ImportModal title="Import Santander" description="Upload a Santander statement (PDF) or movements CSV"
-          endpoint="/api/import/expenses/santander" accept=".pdf,.csv"
-          hint="Santander → Conta → Extrato (PDF) or Movimentos → export as CSV. PDF consolidated statement supported."
+        <ImportModal title="Import Santander" description="Upload a Santander statement (PDF), movements CSV, or XLS/XLSX"
+          endpoint="/api/import/expenses/santander" accept=".pdf,.csv,.xls,.xlsx"
+          hint="Santander → Conta → Extrato (PDF), or Movimentos → Exportar / Descarregar (XLS/CSV)."
           onClose={() => setImp(null)} onImported={() => { setImp(null); fetchRows(); }} />
       )}
       {imp === 'activobank' && (
