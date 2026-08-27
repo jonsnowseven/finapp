@@ -32,7 +32,7 @@ export async function middleware(request: NextRequest) {
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
-      global: { fetch: fetchWithTimeout(8000) },
+      global: { fetch: fetchWithTimeout(15000) },
       cookies: {
         getAll() {
           return request.cookies.getAll();
@@ -49,12 +49,15 @@ export async function middleware(request: NextRequest) {
   );
 
   // Fail CLOSED on a timed-out/failed auth check too (same posture as
-  // isAllowed below) — treat as unauthenticated rather than hang.
+  // isAllowed below) — treat as unauthenticated rather than hang. Tracked
+  // separately from "genuinely no session" so the redirect can say why.
   let user;
+  let authCheckFailed = false;
   try {
     ({ data: { user } } = await supabase.auth.getUser());
   } catch {
     user = null;
+    authCheckFailed = true;
   }
 
   const { pathname } = request.nextUrl;
@@ -66,10 +69,11 @@ export async function middleware(request: NextRequest) {
     pathname.startsWith('/api/cron');   // self-authenticates via CRON_SECRET
 
   if (!user && !isPublicPath) {
-    // API → JSON 401; pages → redirect to login
-    if (isApi) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    // API → JSON 401/503; pages → redirect to login
+    if (isApi) return NextResponse.json({ error: authCheckFailed ? 'Auth check timed out' : 'Unauthorized' }, { status: authCheckFailed ? 503 : 401 });
     const loginUrl = request.nextUrl.clone();
     loginUrl.pathname = '/login';
+    if (authCheckFailed) loginUrl.searchParams.set('error', 'session_check_failed');
     return NextResponse.redirect(loginUrl);
   }
 

@@ -7,6 +7,7 @@ import { createSupabaseBrowserClient } from '../../lib/supabase-browser';
 const ERROR_MESSAGES: Record<string, string> = {
   auth_failed: 'Sign-in failed. Your account may not be authorised — contact the administrator.',
   signup_disabled: 'New sign-ups are disabled. Your account must be pre-approved.',
+  session_check_failed: 'Couldn’t verify your sign-in (the auth server was slow to respond). Please try again.',
 };
 
 // useSearchParams() requires a Suspense boundary during static generation (Next 14).
