@@ -14,6 +14,17 @@ function isAllowed(email: string | undefined): boolean {
   return ALLOWED_EMAILS.length > 0 && ALLOWED_EMAILS.includes(email.toLowerCase());
 }
 
+// Bounds every Supabase call this middleware makes so a slow/unreachable auth
+// server fails fast instead of hanging past Vercel's ~25s middleware timeout
+// (which kills the whole function and serves the visitor a raw 504).
+function fetchWithTimeout(timeoutMs: number) {
+  return (input: RequestInfo | URL, init?: RequestInit) => {
+    const controller = new AbortController();
+    const id = setTimeout(() => controller.abort(), timeoutMs);
+    return fetch(input, { ...init, signal: controller.signal }).finally(() => clearTimeout(id));
+  };
+}
+
 export async function middleware(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request });
 
@@ -21,6 +32,7 @@ export async function middleware(request: NextRequest) {
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
+      global: { fetch: fetchWithTimeout(8000) },
       cookies: {
         getAll() {
           return request.cookies.getAll();
@@ -36,7 +48,14 @@ export async function middleware(request: NextRequest) {
     }
   );
 
-  const { data: { user } } = await supabase.auth.getUser();
+  // Fail CLOSED on a timed-out/failed auth check too (same posture as
+  // isAllowed below) — treat as unauthenticated rather than hang.
+  let user;
+  try {
+    ({ data: { user } } = await supabase.auth.getUser());
+  } catch {
+    user = null;
+  }
 
   const { pathname } = request.nextUrl;
   const isApi = pathname.startsWith('/api');
