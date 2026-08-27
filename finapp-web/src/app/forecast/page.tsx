@@ -7,6 +7,7 @@ import { supabase } from '../../lib/supabase';
 import { entityHex, typeSign, defaultReturn, defaultTax, defaultTer, DEFAULT_MONTHLY_BUY } from '../../lib/entities';
 import { useHideBalance } from '../../lib/useHideBalance';
 import EyeToggle from '../../components/EyeToggle';
+import InfoTooltip from '../../components/Tooltip';
 
 interface Assumption {
   entity: string;
@@ -490,12 +491,14 @@ export default function ForecastPage() {
                   className="w-full mt-1 bg-gray-50 dark:bg-surface-2 border border-gray-300 dark:border-line rounded-lg px-2 py-1 text-sm text-gray-900 dark:text-white outline-none focus:border-indigo-500 dark:focus:border-brand-500"
                 />
                 {age != null && (
-                  <p
-                    className="text-[11px] text-gray-400 normal-case mt-1 cursor-help"
-                    title={`Born ${birthDate} · age ${age.toFixed(1)} today · Portugal retirement age 66y7m → ${yearsToRet} years to retirement (capped at 40 on the slider).`}
+                  <InfoTooltip
+                    className="relative block"
+                    text={`Born ${birthDate} · age ${age.toFixed(1)} today · Portugal retirement age 66y7m → ${yearsToRet} years to retirement (capped at 40 on the slider).`}
                   >
-                    Age {Math.floor(age)} · {yearsToRet}y to PT retirement (66y7m) ⓘ
-                  </p>
+                    <p className="text-[11px] text-gray-400 normal-case mt-1">
+                      Age {Math.floor(age)} · {yearsToRet}y to PT retirement (66y7m) ⓘ
+                    </p>
+                  </InfoTooltip>
                 )}
               </div>
             </div>
@@ -507,14 +510,18 @@ export default function ForecastPage() {
               <div>
                 <p className="label-caps text-gray-400 dark:text-ink-muted">Net worth · history &amp; forecast</p>
                 {vsPlan && (
-                  <p className="text-xs mt-1 text-gray-500 dark:text-ink-muted cursor-help"
-                    title={`Plan projects your first snapshot (${fmt(planOrigin!.value)} on ${vsPlan.fromDate}, ${vsPlan.months} mo ago) forward at the blended net return (${fireCalc.blended.toFixed(1)}%/yr) plus ${fmt(monthlyTotal)}/mo of contributions. Expected today: ${fmt(vsPlan.expected)} · Actual today: ${fmt(Math.round(startTotal))}.`}>
-                    vs plan:{' '}
-                    <span className={vsPlan.delta >= 0 ? 'text-gain font-semibold' : 'text-loss font-semibold'}>
-                      {vsPlan.delta >= 0 ? '+' : ''}{fmt(vsPlan.delta)} ({vsPlan.pct >= 0 ? '+' : ''}{vsPlan.pct.toFixed(1)}%)
-                    </span>
-                    <span className="text-gray-400 dark:text-ink-faint"> {vsPlan.delta >= 0 ? 'ahead' : 'behind'} · since {vsPlan.fromDate} ⓘ</span>
-                  </p>
+                  <InfoTooltip
+                    className="relative block"
+                    text={`Plan projects your first snapshot (${fmt(planOrigin!.value)} on ${vsPlan.fromDate}, ${vsPlan.months} mo ago) forward at the blended net return (${fireCalc.blended.toFixed(1)}%/yr) plus ${fmt(monthlyTotal)}/mo of contributions. Expected today: ${fmt(vsPlan.expected)} · Actual today: ${fmt(Math.round(startTotal))}.`}
+                  >
+                    <p className="text-xs mt-1 text-gray-500 dark:text-ink-muted">
+                      vs plan:{' '}
+                      <span className={vsPlan.delta >= 0 ? 'text-gain font-semibold' : 'text-loss font-semibold'}>
+                        {vsPlan.delta >= 0 ? '+' : ''}{fmt(vsPlan.delta)} ({vsPlan.pct >= 0 ? '+' : ''}{vsPlan.pct.toFixed(1)}%)
+                      </span>
+                      <span className="text-gray-400 dark:text-ink-faint"> {vsPlan.delta >= 0 ? 'ahead' : 'behind'} · since {vsPlan.fromDate} ⓘ</span>
+                    </p>
+                  </InfoTooltip>
                 )}
               </div>
               <div className="flex items-center gap-4 text-xs text-gray-500 dark:text-ink-muted shrink-0">

@@ -11,6 +11,7 @@ import { useBrandColor } from '../lib/useBrandColor';
 import AllocationPie from '../components/AllocationPie';
 import NetWorthChart from '../components/NetWorthChart';
 import Card from '../components/Card';
+import Tooltip from '../components/Tooltip';
 import { AreaChart, Area, ResponsiveContainer } from 'recharts';
 import { RefreshCw, Eye, EyeOff } from 'lucide-react';
 
@@ -615,13 +616,14 @@ export default function HomePage() {
                 <div className="flex items-center gap-1.5">
                   <p className="font-num text-2xl dark:text-ink">{money(valuation ?? balance)}</p>
                   {info && (
-                    <span
-                      title={info}
-                      className="cursor-help text-gray-300 dark:text-ink-faint hover:text-gray-500 dark:hover:text-brand-400 transition-colors text-sm"
-                      aria-label="How this valuation is calculated"
-                    >
-                      ⓘ
-                    </span>
+                    <Tooltip text={info}>
+                      <span
+                        className="text-gray-300 dark:text-ink-faint hover:text-gray-500 dark:hover:text-brand-400 transition-colors text-sm"
+                        aria-label="How this valuation is calculated"
+                      >
+                        ⓘ
+                      </span>
+                    </Tooltip>
                   )}
                 </div>
                 {valuation !== undefined ? (
