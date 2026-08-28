@@ -8,6 +8,7 @@ import { entityHex, typeSign, defaultReturn, defaultTax, defaultTer, DEFAULT_MON
 import { useHideBalance } from '../../lib/useHideBalance';
 import EyeToggle from '../../components/EyeToggle';
 import InfoTooltip from '../../components/Tooltip';
+import { reportError } from '../../lib/devError';
 
 interface Assumption {
   entity: string;
@@ -165,8 +166,9 @@ export default function ForecastPage() {
 
   // Authoritative load from Supabase (overrides the localStorage seed above).
   useEffect(() => {
-    supabase.from('forecast_settings').select('profile,fire,mortgage,rows').limit(1).maybeSingle()
-      .then(({ data }) => {
+    Promise.resolve(supabase.from('forecast_settings').select('profile,fire,mortgage,rows').limit(1).maybeSingle())
+      .then(({ data, error }) => {
+        if (error) reportError('forecast_settings load', error);
         if (!data) {
           // First run: seed the DB from this device's localStorage (if any).
           const read = (k: string) => { try { return JSON.parse(localStorage.getItem(k) || 'null'); } catch { return null; } };
@@ -188,7 +190,8 @@ export default function ForecastPage() {
           if (p.salaryPeriod === 'month' || p.salaryPeriod === 'year') setSalaryPeriod(p.salaryPeriod);
           if (typeof p.pensionTaxPct === 'number') setPensionTaxPct(p.pensionTaxPct);
         }
-      });
+      })
+      .catch((err) => reportError('forecast_settings load', err));
   }, []);
   function updateBirthDate(bd: string) {
     setBirthDate(bd);
@@ -204,18 +207,22 @@ export default function ForecastPage() {
   const yearsToRet = age != null ? Math.round(PT_RETIREMENT_AGE - age) : null;
 
   const load = useCallback(async () => {
-    const { data: txs } = await supabase.from('transactions').select('*');
-    const { data: vals } = await supabase
+    const { data: txs, error: txsError } = await supabase.from('transactions').select('*');
+    if (txsError) reportError('forecast: transactions load', txsError);
+    const { data: vals, error: valsError } = await supabase
       .from('valuations').select('*').order('as_of_date', { ascending: true });
+    if (valsError) reportError('forecast: valuations load', valsError);
     // Snapshot history = actual net worth over time; the latest one holds today's
     // LIVE market value per entity (valuation-or-invested) for the Start values.
-    const { data: snaps } = await supabase
+    const { data: snaps, error: snapsError } = await supabase
       .from('snapshots').select('as_of, total, by_entity').order('as_of', { ascending: true });
+    if (snapsError) reportError('forecast: snapshots load', snapsError);
     setHistory((snaps ?? []).map((s) => ({ date: s.as_of as string, total: Number(s.total) })));
     const live: Record<string, number> = (snaps?.length ? (snaps[snaps.length - 1].by_entity as Record<string, number>) : {}) ?? {};
 
     // Pension scenarios (optional) — default to the legal-age value if present
-    const { data: pen } = await supabase.from('pension_sim').select('scenario, gross, title');
+    const { data: pen, error: penError } = await supabase.from('pension_sim').select('scenario, gross, title');
+    if (penError) reportError('forecast: pension_sim load', penError);
     if (pen?.length) {
       setPensionRows(pen);
       const has = (s: string) => pen.some((p) => p.scenario === s && p.gross);

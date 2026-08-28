@@ -5,6 +5,7 @@ import { supabase } from '../../lib/supabase';
 import { useHideBalance } from '../../lib/useHideBalance';
 import EyeToggle from '../../components/EyeToggle';
 import { TENORS, type Tenor } from '../../lib/euribor';
+import { reportError } from '../../lib/devError';
 
 interface Mortgage {
   balance: number;        // outstanding principal (€)
@@ -40,8 +41,12 @@ export default function MortgagePage() {
   useEffect(() => {
     const s = localStorage.getItem(KEY);
     if (s) { try { setM((p) => ({ ...p, ...JSON.parse(s) })); } catch { /* ignore */ } }
-    supabase.from('forecast_settings').select('mortgage').limit(1).maybeSingle()
-      .then(({ data }) => { if (data?.mortgage) setM((p) => ({ ...p, ...data.mortgage })); });
+    Promise.resolve(supabase.from('forecast_settings').select('mortgage').limit(1).maybeSingle())
+      .then(({ data, error }) => {
+        if (error) reportError('forecast_settings (mortgage) load', error);
+        if (data?.mortgage) setM((p) => ({ ...p, ...data.mortgage }));
+      })
+      .catch((err) => reportError('forecast_settings (mortgage) load', err));
   }, []);
 
   const persist = (next: Mortgage) => {

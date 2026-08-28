@@ -2,6 +2,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase';
 import { ShieldAlert, Copy, Check, Trash2, RefreshCw } from 'lucide-react';
+import { reportError } from '../../lib/devError';
 
 interface LegacyRow {
   id: string;
@@ -58,6 +59,7 @@ export default function LegacyPage() {
 
   const fetchRows = useCallback(async () => {
     const { data, error } = await supabase.from('legacy_accounts').select('*').order('category').order('name');
+    if (error) reportError('legacy_accounts load', error);
     if (!error && data) setRows(data);
   }, []);
 

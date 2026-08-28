@@ -6,6 +6,7 @@ import { legoRate } from '../../lib/lego';
 import { RefreshCw, Upload, Plus } from 'lucide-react';
 import { useHideBalance } from '../../lib/useHideBalance';
 import EyeToggle from '../../components/EyeToggle';
+import { reportError } from '../../lib/devError';
 
 interface LegoSet {
   set_no: string;
@@ -34,7 +35,8 @@ export default function LegoPage() {
   const [showAdd, setShowAdd] = useState(false);
 
   const fetchSets = useCallback(async () => {
-    const { data } = await supabase.from('lego_sets').select('*').order('value', { ascending: false });
+    const { data, error } = await supabase.from('lego_sets').select('*').order('value', { ascending: false });
+    if (error) reportError('lego_sets load', error);
     if (data) setSets(data as LegoSet[]);
   }, []);
   useEffect(() => { fetchSets().finally(() => setLoading(false)); }, [fetchSets]);

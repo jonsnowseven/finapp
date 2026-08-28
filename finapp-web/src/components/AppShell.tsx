@@ -7,6 +7,8 @@ import { Landmark, LayoutDashboard, Receipt, Wallet, LineChart, Blocks, PiggyBan
 import ThemeToggle from './ThemeToggle';
 import EyeToggle from './EyeToggle';
 import MonthlyReminder from './MonthlyReminder';
+import ErrorBoundary from './ErrorBoundary';
+import DevErrorOverlay from './DevErrorOverlay';
 import { ACCENTS, useAccent } from '../lib/useAccent';
 import { createSupabaseBrowserClient } from '../lib/supabase-browser';
 import type { User } from '@supabase/supabase-js';
@@ -65,7 +67,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   }
 
   // Logged out (login / unauthorized): no chrome.
-  if (!user) return <>{children}</>;
+  if (!user) return <ErrorBoundary>{children}</ErrorBoundary>;
 
   const navItem = (active: boolean) =>
     `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 ${
@@ -132,8 +134,9 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       {/* Content */}
       <div className="flex-1 min-w-0 lg:pl-64">
         <MonthlyReminder />
-        {children}
+        <ErrorBoundary>{children}</ErrorBoundary>
       </div>
+      <DevErrorOverlay />
     </div>
   );
 }

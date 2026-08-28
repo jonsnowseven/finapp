@@ -12,6 +12,7 @@ import AllocationPie from '../components/AllocationPie';
 import NetWorthChart from '../components/NetWorthChart';
 import Card from '../components/Card';
 import Tooltip from '../components/Tooltip';
+import { reportError } from '../lib/devError';
 import { AreaChart, Area, ResponsiveContainer } from 'recharts';
 import { RefreshCw, Eye, EyeOff } from 'lucide-react';
 
@@ -149,6 +150,7 @@ export default function HomePage() {
   async function fetchDashboardData(fresh = false) {
     const q = fresh ? '?fresh=1' : '';
     const { data, error } = await supabase.from('transactions').select('*');
+    if (error) reportError('dashboard: transactions load', error);
     if (!error && data) {
       const fees = data.reduce((acc, curr) => acc + Number(curr.fees || 0), 0);
 
@@ -411,7 +413,8 @@ export default function HomePage() {
       }
 
       // LEGO investments (separate table): current value as valuation, paid as invested.
-      const { data: lego } = await supabase.from('lego_sets').select('paid, value');
+      const { data: lego, error: legoError } = await supabase.from('lego_sets').select('paid, value');
+      if (legoError) reportError('dashboard: lego_sets load', legoError);
       if (lego && lego.length) {
         const paid = lego.reduce((a, r) => a + Number(r.paid ?? 0), 0);
         const value = lego.reduce((a, r) => a + Number(r.value ?? 0), 0);
@@ -463,11 +466,13 @@ export default function HomePage() {
           });
         } catch { /* ignore */ }
       }
-      const { data: snaps } = await supabase.from('snapshots').select('as_of, total').order('as_of', { ascending: true });
+      const { data: snaps, error: snapsError } = await supabase.from('snapshots').select('as_of, total').order('as_of', { ascending: true });
+      if (snapsError) reportError('dashboard: snapshots load', snapsError);
       if (snaps) setSnapshots(snaps.map((s) => ({ as_of: s.as_of, total: Number(s.total) })));
 
       // Expenses ledger (for the AI report's cashflow section). Ignored if table absent.
-      const { data: exp } = await supabase.from('expenses').select('date, amount, tag, tag_label');
+      const { data: exp, error: expError } = await supabase.from('expenses').select('date, amount, tag, tag_label');
+      if (expError) reportError('dashboard: expenses load', expError);
       if (exp) setExpenseRows(exp as ExpenseRow[]);
     }
     setLoading(false);

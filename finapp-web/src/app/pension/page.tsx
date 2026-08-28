@@ -3,6 +3,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useHideBalance } from '../../lib/useHideBalance';
 import EyeToggle from '../../components/EyeToggle';
+import { reportError } from '../../lib/devError';
 
 interface Scenario {
   scenario: 'early' | 'personal' | 'legal';
@@ -36,7 +37,8 @@ export default function PensionPage() {
   const [saved, setSaved] = useState(false);
 
   const load = useCallback(async () => {
-    const { data } = await supabase.from('pension_sim').select('*');
+    const { data, error } = await supabase.from('pension_sim').select('*');
+    if (error) reportError('pension_sim load', error);
     if (data && data.length) {
       setRows(DEFAULTS.map((d) => {
         const r = data.find((x) => x.scenario === d.scenario);

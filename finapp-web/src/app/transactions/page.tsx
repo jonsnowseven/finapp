@@ -7,6 +7,7 @@ import AddTransactionModal, { TransactionSeed } from '../../components/AddTransa
 import { RefreshCw, Upload, ChevronDown, Plus, Copy } from 'lucide-react';
 import { useHideBalance } from '../../lib/useHideBalance';
 import EyeToggle from '../../components/EyeToggle';
+import { reportError } from '../../lib/devError';
 
 type ImportKey = 'kraken' | 'degiro' | 'tr' | 'bancoinvest' | 'sgf' | 'revolut' | 'aforro';
 
@@ -38,6 +39,7 @@ export default function TransactionsPage() {
 
   const fetchTransactions = useCallback(async () => {
     const { data, error } = await supabase.from('transactions').select('*').order('date', { ascending: false });
+    if (error) reportError('transactions load', error);
     if (!error && data) {
       setTransactions(data);
       setFilteredTransactions(data);

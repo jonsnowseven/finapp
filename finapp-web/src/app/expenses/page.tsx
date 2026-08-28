@@ -7,6 +7,7 @@ import ExpensesOverview from '../../components/ExpensesOverview';
 import EyeToggle from '../../components/EyeToggle';
 import { useHideBalance } from '../../lib/useHideBalance';
 import { Search } from 'lucide-react';
+import { reportError } from '../../lib/devError';
 
 interface Expense {
   id: string;
@@ -66,7 +67,8 @@ export default function ExpensesPage() {
   const [imp, setImp] = useState<'santander' | 'activobank' | null>(null);
 
   const fetchRows = useCallback(async () => {
-    const { data } = await supabase.from('expenses').select('*').order('date', { ascending: false });
+    const { data, error } = await supabase.from('expenses').select('*').order('date', { ascending: false });
+    if (error) reportError('expenses load', error);
     if (data) setRows(data as Expense[]);
   }, []);
   useEffect(() => { fetchRows().finally(() => setLoading(false)); }, [fetchRows]);
