@@ -4,7 +4,7 @@ import { supabase } from '../../lib/supabase';
 import TransactionChart from '../../components/TransactionChart';
 import ImportModal from '../../components/ImportModal';
 import AddTransactionModal, { TransactionSeed } from '../../components/AddTransactionModal';
-import { RefreshCw, Upload, ChevronDown, Plus, Copy } from 'lucide-react';
+import { RefreshCw, Upload, ChevronDown, Plus, Copy, Trash2 } from 'lucide-react';
 import { useHideBalance } from '../../lib/useHideBalance';
 import EyeToggle from '../../components/EyeToggle';
 import { reportError } from '../../lib/devError';
@@ -33,6 +33,7 @@ export default function TransactionsPage() {
   const [showImportMenu, setShowImportMenu] = useState(false);
   const [showAdd, setShowAdd] = useState(false);
   const [duplicateSeed, setDuplicateSeed] = useState<TransactionSeed | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const [selectedEntity, setSelectedEntity] = useState('All');
   const [selectedType, setSelectedType] = useState('All');
@@ -76,6 +77,22 @@ export default function TransactionsPage() {
       alert('Delete failed: network error.');
     } finally {
       setDeleting(false);
+    }
+  }
+
+  async function handleDeleteTransaction(tx: any) {
+    const label = `${tx.entity} · ${tx.asset_name} · ${tx.date} · ${money(Number(tx.amount))}`;
+    if (!confirm(`Delete this transaction?\n\n${label}\n\nThis cannot be undone.`)) return;
+    setDeletingId(tx.id);
+    try {
+      const res = await fetch(`/api/transactions?id=${tx.id}`, { method: 'DELETE' });
+      const json = await res.json();
+      if (!res.ok) { alert(`Delete failed: ${json.error ?? 'unknown error'}`); return; }
+      await fetchTransactions();
+    } catch {
+      alert('Delete failed: network error.');
+    } finally {
+      setDeletingId(null);
     }
   }
 
@@ -334,24 +351,34 @@ export default function TransactionsPage() {
                       </td>
                       <td className="p-4 text-right font-num text-gray-900 dark:text-ink">{money(Number(tx.amount))}</td>
                       <td className="p-4">
-                        <button
-                          onClick={() => setDuplicateSeed({
-                            date: tx.date,
-                            entity: tx.entity,
-                            asset_name: tx.asset_name,
-                            isin: tx.isin,
-                            transaction_type: tx.transaction_type,
-                            quantity: tx.quantity,
-                            price: tx.price,
-                            amount: Number(tx.amount),
-                            currency: tx.currency,
-                            fees: tx.fees,
-                          })}
-                          title="Duplicate as new transaction"
-                          className="text-gray-300 dark:text-gray-600 opacity-0 group-hover:opacity-100 hover:text-indigo-600 dark:hover:text-brand-400 transition-all"
-                        >
-                          <Copy size={14} />
-                        </button>
+                        <div className="flex items-center gap-3">
+                          <button
+                            onClick={() => setDuplicateSeed({
+                              date: tx.date,
+                              entity: tx.entity,
+                              asset_name: tx.asset_name,
+                              isin: tx.isin,
+                              transaction_type: tx.transaction_type,
+                              quantity: tx.quantity,
+                              price: tx.price,
+                              amount: Number(tx.amount),
+                              currency: tx.currency,
+                              fees: tx.fees,
+                            })}
+                            title="Duplicate as new transaction"
+                            className="text-gray-300 dark:text-gray-600 opacity-0 group-hover:opacity-100 hover:text-indigo-600 dark:hover:text-brand-400 transition-all"
+                          >
+                            <Copy size={14} />
+                          </button>
+                          <button
+                            onClick={() => handleDeleteTransaction(tx)}
+                            disabled={deletingId === tx.id}
+                            title="Delete transaction"
+                            className="text-gray-300 dark:text-gray-600 opacity-0 group-hover:opacity-100 hover:text-red-500 dark:hover:text-red-400 transition-all disabled:opacity-50"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))

@@ -50,3 +50,19 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: err.message }, { status: 500 });
   }
 }
+
+// Delete one transaction by id.
+export async function DELETE(request: Request) {
+  const guard = await requireApiUser();
+  if (guard) return guard;
+  const url = new URL(request.url);
+  const id = url.searchParams.get('id');
+  if (!id) return NextResponse.json({ error: 'id required' }, { status: 400 });
+  try {
+    const { error } = await db().from('transactions').delete().eq('id', id);
+    if (error) throw error;
+    return NextResponse.json({ ok: true });
+  } catch (err: any) {
+    return NextResponse.json({ error: err.message }, { status: 500 });
+  }
+}
