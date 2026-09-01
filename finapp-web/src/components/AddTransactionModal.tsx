@@ -18,6 +18,7 @@ export interface TransactionSeed {
 interface Props {
   entitySuggestions: string[];
   initial?: TransactionSeed;
+  editId?: string;   // set → PATCH this row in place instead of creating a new one
   onClose: () => void;
   onAdded: () => void;
 }
@@ -32,7 +33,7 @@ function today() {
 
 const numStr = (n: number | null | undefined) => (n === null || n === undefined ? '' : String(n));
 
-export default function AddTransactionModal({ entitySuggestions, initial, onClose, onAdded }: Props) {
+export default function AddTransactionModal({ entitySuggestions, initial, editId, onClose, onAdded }: Props) {
   const seedTypeIsKnown = !initial?.transaction_type || TYPES.includes(initial.transaction_type);
 
   const [date, setDate] = useState(initial?.date ?? today());
@@ -60,9 +61,10 @@ export default function AddTransactionModal({ entitySuggestions, initial, onClos
     setSaving(true);
     try {
       const res = await fetch('/api/transactions', {
-        method: 'POST',
+        method: editId ? 'PATCH' : 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          ...(editId && { id: editId }),
           date,
           entity: entity.trim(),
           asset_name: assetName.trim(),
@@ -76,7 +78,7 @@ export default function AddTransactionModal({ entitySuggestions, initial, onClos
         }),
       });
       const json = await res.json();
-      if (!res.ok) { setErr(json.error ?? 'Add failed.'); return; }
+      if (!res.ok) { setErr(json.error ?? (editId ? 'Save failed.' : 'Add failed.')); return; }
       onAdded();
     } catch {
       setErr('Network error.');
@@ -90,9 +92,13 @@ export default function AddTransactionModal({ entitySuggestions, initial, onClos
       <div className="bg-white dark:bg-surface rounded-2xl border border-gray-200 dark:border-line shadow-xl w-full max-w-lg p-6">
         <div className="flex items-center justify-between mb-5">
           <div>
-            <h3 className="text-lg font-bold text-gray-900 dark:text-white">{initial ? 'Duplicate Transaction' : 'Add Manual Transaction'}</h3>
+            <h3 className="text-lg font-bold text-gray-900 dark:text-white">{editId ? 'Edit Transaction' : initial ? 'Duplicate Transaction' : 'Add Manual Transaction'}</h3>
             <p className="text-xs text-gray-400 mt-0.5">
-              {initial ? 'Prefilled from the original — edit anything before saving as a new row.' : "For statements that don't import cleanly — enter it by hand."}
+              {editId
+                ? 'Update the fields and save — this changes the existing row in place.'
+                : initial
+                  ? 'Prefilled from the original — edit anything before saving as a new row.'
+                  : "For statements that don't import cleanly — enter it by hand."}
             </p>
           </div>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors text-xl leading-none">✕</button>
@@ -155,7 +161,7 @@ export default function AddTransactionModal({ entitySuggestions, initial, onClos
             disabled={saving}
             className="flex-1 py-2.5 rounded-xl bg-indigo-600 dark:bg-brand-500 text-white dark:text-black text-sm font-semibold hover:bg-indigo-700 dark:hover:bg-brand-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {saving ? 'Adding…' : initial ? 'Save as new' : 'Add transaction'}
+            {saving ? 'Saving…' : editId ? 'Save changes' : initial ? 'Save as new' : 'Add transaction'}
           </button>
           <button
             onClick={onClose}

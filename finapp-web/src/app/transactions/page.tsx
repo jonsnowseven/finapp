@@ -4,7 +4,7 @@ import { supabase } from '../../lib/supabase';
 import TransactionChart from '../../components/TransactionChart';
 import ImportModal from '../../components/ImportModal';
 import AddTransactionModal, { TransactionSeed } from '../../components/AddTransactionModal';
-import { RefreshCw, Upload, ChevronDown, Plus, Copy, Trash2 } from 'lucide-react';
+import { RefreshCw, Upload, ChevronDown, Plus, Copy, Trash2, Pencil } from 'lucide-react';
 import { useHideBalance } from '../../lib/useHideBalance';
 import EyeToggle from '../../components/EyeToggle';
 import { reportError } from '../../lib/devError';
@@ -23,6 +23,22 @@ const IMPORT_SOURCES: { key: ImportKey; label: string; hint: string }[] = [
   { key: 'aforro',      label: 'Certificados Aforro (PDF)', hint: 'IGCP / Aforro Net → Conta Aforro → Extrato → download the statement PDF.' },
 ];
 
+// Prefill shape for the Add/Duplicate/Edit modal from an existing row.
+function seedFrom(tx: any): TransactionSeed {
+  return {
+    date: tx.date,
+    entity: tx.entity,
+    asset_name: tx.asset_name,
+    isin: tx.isin,
+    transaction_type: tx.transaction_type,
+    quantity: tx.quantity,
+    price: tx.price,
+    amount: Number(tx.amount),
+    currency: tx.currency,
+    fees: tx.fees,
+  };
+}
+
 export default function TransactionsPage() {
   const { money, hidden } = useHideBalance();
   const [transactions, setTransactions] = useState<any[]>([]);
@@ -33,6 +49,7 @@ export default function TransactionsPage() {
   const [showImportMenu, setShowImportMenu] = useState(false);
   const [showAdd, setShowAdd] = useState(false);
   const [duplicateSeed, setDuplicateSeed] = useState<TransactionSeed | null>(null);
+  const [editId, setEditId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const [selectedEntity, setSelectedEntity] = useState('All');
@@ -202,8 +219,9 @@ export default function TransactionsPage() {
         <AddTransactionModal
           entitySuggestions={entities.filter(e => e !== 'All')}
           initial={duplicateSeed ?? undefined}
-          onClose={() => { setShowAdd(false); setDuplicateSeed(null); }}
-          onAdded={() => { setShowAdd(false); setDuplicateSeed(null); handleRefresh(); }}
+          editId={editId ?? undefined}
+          onClose={() => { setShowAdd(false); setDuplicateSeed(null); setEditId(null); }}
+          onAdded={() => { setShowAdd(false); setDuplicateSeed(null); setEditId(null); handleRefresh(); }}
         />
       )}
 
@@ -353,18 +371,14 @@ export default function TransactionsPage() {
                       <td className="p-4">
                         <div className="flex items-center gap-3">
                           <button
-                            onClick={() => setDuplicateSeed({
-                              date: tx.date,
-                              entity: tx.entity,
-                              asset_name: tx.asset_name,
-                              isin: tx.isin,
-                              transaction_type: tx.transaction_type,
-                              quantity: tx.quantity,
-                              price: tx.price,
-                              amount: Number(tx.amount),
-                              currency: tx.currency,
-                              fees: tx.fees,
-                            })}
+                            onClick={() => { setEditId(tx.id); setDuplicateSeed(seedFrom(tx)); }}
+                            title="Edit transaction"
+                            className="text-gray-300 dark:text-gray-600 opacity-0 group-hover:opacity-100 hover:text-indigo-600 dark:hover:text-brand-400 transition-all"
+                          >
+                            <Pencil size={14} />
+                          </button>
+                          <button
+                            onClick={() => setDuplicateSeed(seedFrom(tx))}
                             title="Duplicate as new transaction"
                             className="text-gray-300 dark:text-gray-600 opacity-0 group-hover:opacity-100 hover:text-indigo-600 dark:hover:text-brand-400 transition-all"
                           >
