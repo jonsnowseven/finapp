@@ -121,4 +121,5 @@ export const TR_EUR_SYMBOL: Record<string, string> = {
   'Core MSCI EM IMI USD (Acc)':           'IS3N.DE', // iShares Core MSCI EM IMI, IE00BKM4GZ66
   'Core Stoxx Europe 600 EUR (Acc)':      'MEUD.PA', // Amundi Core Stoxx Europe 600, LU0908500753
   'Gold Miners USD (Acc)':                'G2X.DE',  // VanEck Gold Miners, IE00BQQP9F84
+  'FTSE All-World USD (Acc)':             'VWCE.DE', // Vanguard FTSE All-World, IE00BK5BQT80
 };

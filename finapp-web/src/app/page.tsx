@@ -342,21 +342,32 @@ export default function HomePage() {
         const base = trCashEntity.valuation;
         const baseDate = trCashEntity.valuationDate;
         const days = Math.max(0, (Date.now() - new Date(baseDate).getTime()) / 86_400_000);
+
+        // Ledger movements dated AFTER the statement snapshot (e.g. a manual
+        // withdrawal to fund a trade) aren't in `base` yet — apply them on top so
+        // the estimate doesn't silently ignore activity until the next import.
+        const postBaseDelta = data
+          .filter((tx) => tx.entity === 'Trade Republic Cash' && tx.date > baseDate)
+          .reduce((sum, tx) => sum + typeSign(tx.transaction_type) * Number(tx.amount), 0);
+
         let eur = NaN;
         try { const r = await fetch(`/api/euribor${q}`); eur = Number((await r.json()).rate); } catch { /* keep raw */ }
         if (isFinite(eur)) {
           const net = eur * (1 - 0.28);           // 28% PT withholding on interest
-          trCashEntity.valuation = base * (1 + (net / 100) * days / 365);
+          trCashEntity.valuation = base * (1 + (net / 100) * days / 365) + postBaseDelta;
           trCashEntity.valuationDate = `est. · Euribor3M ${eur.toFixed(3)}% net`;
           trCashEntity.info =
             `Trade Republic cash at interest — checking-account balance (escrow + money-market fund).\n\n` +
             `Base: statement balance ${fmt(base)} on ${baseDate}, accrued ~${Math.round(days)} days at ` +
-            `${net.toFixed(2)}%/yr NET (Euribor 3M ${eur.toFixed(3)}% − 28% PT tax).\n\n` +
-            `Import a newer statement PDF to reset the base.`;
+            `${net.toFixed(2)}%/yr NET (Euribor 3M ${eur.toFixed(3)}% − 28% PT tax)` +
+            (postBaseDelta ? `, plus ${fmt(postBaseDelta)} in ledger activity recorded since the statement.` : '.') +
+            `\n\nImport a newer statement PDF to reset the base.`;
         } else {
+          trCashEntity.valuation = base + postBaseDelta;
           trCashEntity.info =
-            `Trade Republic cash at interest — statement balance ${fmt(base)} on ${baseDate}. ` +
-            `Euribor unavailable, showing the raw balance. Import a newer statement PDF to update.`;
+            `Trade Republic cash at interest — statement balance ${fmt(base)} on ${baseDate}` +
+            (postBaseDelta ? `, plus ${fmt(postBaseDelta)} in ledger activity recorded since.` : '.') +
+            ` Euribor unavailable, showing the raw balance. Import a newer statement PDF to update.`;
         }
       }
 
