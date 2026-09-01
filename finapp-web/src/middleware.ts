@@ -90,5 +90,9 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)'],
+  // manifest.json (+ any /.well-known/* file, e.g. assetlinks.json for the
+  // Android app's Digital Asset Links) must be reachable unauthenticated —
+  // they're fetched as plain HTTP requests with no session cookie, by the
+  // browser's install-prompt check and by Bubblewrap/Android at install time.
+  matcher: ['/((?!_next/static|_next/image|favicon.ico|manifest.json|\\.well-known|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)'],
 };

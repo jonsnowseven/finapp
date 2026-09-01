@@ -12,6 +12,11 @@ const mono = JetBrains_Mono({ subsets: ['latin'], weight: ['500', '600'], variab
 export const metadata = {
   title: 'FinApp',
   description: 'Personal Financial Portfolio Monitor',
+  manifest: '/manifest.json',
+};
+
+export const viewport = {
+  themeColor: '#0a0a0a',
 };
 
 export default function RootLayout({
