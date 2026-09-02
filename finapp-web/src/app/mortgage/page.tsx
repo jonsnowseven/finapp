@@ -73,7 +73,11 @@ export default function MortgagePage() {
     try {
       const res = await fetch('/api/import/mortgage', { method: 'POST', body: fd });
       const j = await res.json();
-      if (!res.ok) { setImportErr(j.error ?? 'Import failed'); return; }
+      if (!res.ok) {
+        const debug = j.debug ? ` [${JSON.stringify(j.debug)}]` : '';
+        setImportErr((j.error ?? 'Import failed') + debug);
+        return;
+      }
       setM((prev) => {
         const next = {
           ...prev, balance: j.balance, payment: j.payment, paid: j.paid,
