@@ -83,7 +83,8 @@ export default function ImportModal({ title, description, endpoint, accept = '.p
         const res = await fetch(endpoint, { method: 'POST', body: form });
         const json = await res.json();
         if (!res.ok) {
-          collected.push({ name: file.name, error: json.error ?? 'Upload failed.' });
+          const debug = json.debug ? ` [${JSON.stringify(json.debug)}]` : '';
+          collected.push({ name: file.name, error: (json.error ?? 'Upload failed.') + debug });
         } else {
           collected.push({ name: file.name, inserted: json.inserted, total: json.total });
           anySuccess = true;

@@ -155,7 +155,19 @@ export async function POST(request: Request) {
     if (isPdf) {
       // eslint-disable-next-line @typescript-eslint/no-require-imports
       const pdfParse: (buf: Buffer) => Promise<{ text: string }> = require('pdf-parse');
-      const pdf = await pdfParse(Buffer.from(await file.arrayBuffer()));
+      const buf = Buffer.from(await file.arrayBuffer());
+
+      // pdf-parse pins a very old pdf.js build whose internal xref-recovery
+      // warnings occasionally surface as thrown errors instead of being
+      // swallowed (seen on the mortgage-import route, not reproducible
+      // locally) — retry once before giving up.
+      let pdf;
+      try {
+        pdf = await pdfParse(buf);
+      } catch {
+        pdf = await pdfParse(buf);
+      }
+
       const cash = parseTradeRepublicStatement(pdf.text);
       const cashRows = parseTradeRepublicCashRows(pdf.text);
       if (!cash && cashRows.length === 0) {
@@ -276,6 +288,15 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ inserted: data?.length ?? 0, total: records.length });
   } catch (err: any) {
-    return NextResponse.json({ error: err.message }, { status: 500 });
+    // No Vercel log access from here — put enough in the response itself to
+    // diagnose without another round trip.
+    return NextResponse.json({
+      error: err.message,
+      debug: {
+        nodeVersion: process.version,
+        errName: err?.name,
+        errStack: String(err?.stack ?? '').split('\n').slice(0, 3),
+      },
+    }, { status: 500 });
   }
 }
