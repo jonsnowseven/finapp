@@ -1,6 +1,7 @@
 import { requireApiUser } from '../../../../lib/api-auth';
 import { NextResponse } from 'next/server';
 import { parseSantanderLoanPdf } from '../../../../lib/expense-import';
+import { extractPdfText } from '../../../../lib/pdfText';
 
 // Parse a Santander loan-movements PDF and return { balance, payment } to
 // prefill the Mortgage form. Does not write to the DB.
@@ -12,27 +13,14 @@ export async function POST(request: Request) {
     const file = formData.get('file') as File | null;
     if (!file) return NextResponse.json({ error: 'No file uploaded' }, { status: 400 });
 
-    const pdfParse: (buf: Buffer) => Promise<{ text: string }> = require('pdf-parse');
     const buf = Buffer.from(await file.arrayBuffer());
-
-    // pdf-parse pins a very old pdf.js build whose internal xref-recovery
-    // warnings ("bad XRef entry" etc.) occasionally surface as thrown errors
-    // instead of being swallowed — not reproducible locally, so treat it as
-    // possibly transient and retry once before giving up.
-    let pdf;
-    let firstAttemptErr: any = null;
-    try {
-      pdf = await pdfParse(buf);
-    } catch (e: any) {
-      firstAttemptErr = e;
-      pdf = await pdfParse(buf);
-    }
+    const pdf = { text: await extractPdfText(buf) };
 
     const parsed = parseSantanderLoanPdf(pdf.text);
     if (!parsed) {
       return NextResponse.json({
         error: 'No instalments found. Check the PDF (Consulta Movimentos Empréstimo).',
-        debug: { retried: !!firstAttemptErr, textLength: pdf.text.length, textSample: pdf.text.slice(0, 300) },
+        debug: { textLength: pdf.text.length, textSample: pdf.text.slice(0, 300) },
       }, { status: 422 });
     }
     return NextResponse.json(parsed);

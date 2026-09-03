@@ -2,6 +2,7 @@ import { requireApiUser } from '../../../../../lib/api-auth';
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { parseBankCsv, parseBankXlsx, parseActivoBankPdf, toExpenseRecords, type ParsedRow } from '../../../../../lib/expense-import';
+import { extractPdfText } from '../../../../../lib/pdfText';
 
 export async function POST(request: Request) {
   const guard = await requireApiUser();
@@ -17,9 +18,8 @@ export async function POST(request: Request) {
     let rows: ParsedRow[];
     if (isPdf) {
       // "EXTRATO COMBINADO" PDF — parse the CONTA SIMPLES running-balance table.
-      const pdfParse: (buf: Buffer) => Promise<{ text: string }> = require('pdf-parse');
-      const pdf = await pdfParse(Buffer.from(await file.arrayBuffer()));
-      rows = parseActivoBankPdf(pdf.text);
+      const text = await extractPdfText(Buffer.from(await file.arrayBuffer()));
+      rows = parseActivoBankPdf(text);
     } else if (isXlsx) {
       // XLSX history export — same columns as the CSV export.
       rows = parseBankXlsx(Buffer.from(await file.arrayBuffer()));

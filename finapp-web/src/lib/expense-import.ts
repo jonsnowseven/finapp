@@ -229,9 +229,10 @@ export function parseSantanderPdf(text: string): ParsedRow[] {
 // outstanding balance + loan payment (juros + capital; the SEG insurance is
 // separate). Rows are newest-first; grouped by instalment number.
 export function parseSantanderLoanPdf(text: string): { balance: number; payment: number; paid: number } | null {
-  // pdf-parse glues the two dates + instalment number and the amounts to EUR.
+  // Column cells may render glued together (no separator) or space-separated,
+  // depending on the PDF text-extraction engine — tolerate both.
   const flat = text.replace(/ /g, ' ').replace(/\s+/g, ' ');
-  const re = /(\d{2}-\d{2}-\d{4})(\d{2}-\d{2}-\d{4})(\d+)PRESTACAO ?- ?(SEG ED|JUROS|CAPIT\.?)(-?\d[\d.]*,\d{2}) ?EUR ?([\d.]*,\d{2}) ?EUR/g;
+  const re = /(\d{2}-\d{2}-\d{4}) ?(\d{2}-\d{2}-\d{4}) ?(\d+) ?PRESTACAO ?- ?(SEG ED|JUROS|CAPIT\.?) ?(-?\d[\d.]*,\d{2}) ?EUR ?([\d.]*,\d{2}) ?EUR/g;
   const groups: Record<number, { presta: number; juros?: number; capital?: number; capSaldo?: number }> = {};
   let m: RegExpExecArray | null;
   while ((m = re.exec(flat)) !== null) {

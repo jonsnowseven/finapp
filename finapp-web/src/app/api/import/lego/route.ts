@@ -2,6 +2,7 @@ import { requireApiUser } from '../../../../lib/api-auth';
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { splitNameTheme } from '../../../../lib/lego';
+import { extractPdfText } from '../../../../lib/pdfText';
 
 // "€1,234.56" / "139.39" → number (US-style: dot decimal, comma thousands)
 function num(s: string): number {
@@ -44,14 +45,12 @@ export async function POST(request: Request) {
   const guard = await requireApiUser();
   if (guard) return guard;
   try {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const pdfParse: (buf: Buffer) => Promise<{ text: string }> = require('pdf-parse');
     const formData = await request.formData();
     const file = formData.get('file') as File | null;
     if (!file) return NextResponse.json({ error: 'No file uploaded' }, { status: 400 });
 
     const buffer = Buffer.from(await file.arrayBuffer());
-    const pdf = await pdfParse(buffer);
+    const pdf = { text: await extractPdfText(buffer) };
     const records = parseLegoPdf(pdf.text);
 
     if (records.length === 0) {

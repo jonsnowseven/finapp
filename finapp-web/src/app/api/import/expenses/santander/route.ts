@@ -2,6 +2,7 @@ import { requireApiUser } from '../../../../../lib/api-auth';
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { parseBankCsv, parseBankXlsx, parseSantanderPdf, toExpenseRecords, type ParsedRow } from '../../../../../lib/expense-import';
+import { extractPdfText } from '../../../../../lib/pdfText';
 
 export async function POST(request: Request) {
   const guard = await requireApiUser();
@@ -19,9 +20,8 @@ export async function POST(request: Request) {
     let rows: ParsedRow[];
     if (isPdf) {
       // "Extrato Consolidado" PDF — parse the Conta à Ordem running-balance table.
-      const pdfParse: (buf: Buffer) => Promise<{ text: string }> = require('pdf-parse');
-      const pdf = await pdfParse(Buffer.from(await file.arrayBuffer()));
-      rows = parseSantanderPdf(pdf.text);
+      const text = await extractPdfText(Buffer.from(await file.arrayBuffer()));
+      rows = parseSantanderPdf(text);
     } else if (isXlsx) {
       // "Listagem de Movimentos" export — legacy binary .xls (CDFV2), same
       // column layout as the CSV/ActivoBank XLSX path: date/date/desc/signed amount/balance.

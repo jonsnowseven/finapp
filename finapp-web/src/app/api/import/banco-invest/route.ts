@@ -1,6 +1,7 @@
 import { requireApiUser } from "../../../../lib/api-auth";
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { extractPdfText } from '../../../../lib/pdfText';
 
 function ptNum(s: string): number {
   // Strip spaces (thousands sep like "3 710,95") and dots, comma → decimal.
@@ -208,10 +209,8 @@ export async function POST(request: Request) {
       records = parsed.records;
       val = parsed.valuation;
     } else {
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
-      const pdfParse: (buf: Buffer) => Promise<{ text: string }> = require('pdf-parse');
       const buffer = Buffer.from(await file.arrayBuffer());
-      const pdf = await pdfParse(buffer);
+      const pdf = { text: await extractPdfText(buffer) };
       records = parseBancoInvestPdf(pdf.text);
       val = parseBancoInvestValuation(pdf.text);
     }

@@ -1,6 +1,7 @@
 import { requireApiUser } from "../../../../lib/api-auth";
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { extractPdfText } from '../../../../lib/pdfText';
 
 const ASSET_MAP: Record<string, string> = {
   BTC: 'Bitcoin', XBT: 'Bitcoin', ETH: 'Ethereum', SOL: 'Solana',
@@ -80,10 +81,8 @@ export async function POST(request: Request) {
     const file = formData.get('file') as File | null;
     if (!file) return NextResponse.json({ error: 'No file uploaded' }, { status: 400 });
 
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const pdfParse: (buf: Buffer) => Promise<{ text: string }> = require('pdf-parse');
     const buffer = Buffer.from(await file.arrayBuffer());
-    const pdf = await pdfParse(buffer);
+    const pdf = { text: await extractPdfText(buffer) };
     const records = parseKrakenPdf(pdf.text);
 
     if (records.length === 0) {

@@ -1,6 +1,7 @@
 import { requireApiUser } from "../../../../lib/api-auth";
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { extractPdfText } from '../../../../lib/pdfText';
 
 // Portuguese amount: "5 339,20" or "200,00" → number
 function ptNum(s: string): number {
@@ -107,14 +108,12 @@ export async function POST(request: Request) {
   const guard = await requireApiUser();
   if (guard) return guard;
   try {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const pdfParse: (buf: Buffer) => Promise<{ text: string }> = require('pdf-parse');
     const formData = await request.formData();
     const file = formData.get('file') as File | null;
     if (!file) return NextResponse.json({ error: 'No file uploaded' }, { status: 400 });
 
     const buffer = Buffer.from(await file.arrayBuffer());
-    const pdf = await pdfParse(buffer);
+    const pdf = { text: await extractPdfText(buffer) };
     const records = parseRevolutBoostedPdf(pdf.text);
 
     if (records.length === 0) {

@@ -1,6 +1,7 @@
 import { requireApiUser } from "../../../../lib/api-auth";
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { extractPdfText } from '../../../../lib/pdfText';
 
 // Minimal RFC 4180 CSV parser
 function parseCsv(text: string): Record<string, string>[] {
@@ -153,20 +154,8 @@ export async function POST(request: Request) {
     // PDF account statement → store the ending cash balance (cash-at-interest).
     const isPdf = file.type === 'application/pdf' || file.name?.toLowerCase().endsWith('.pdf');
     if (isPdf) {
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
-      const pdfParse: (buf: Buffer) => Promise<{ text: string }> = require('pdf-parse');
       const buf = Buffer.from(await file.arrayBuffer());
-
-      // pdf-parse pins a very old pdf.js build whose internal xref-recovery
-      // warnings occasionally surface as thrown errors instead of being
-      // swallowed (seen on the mortgage-import route, not reproducible
-      // locally) — retry once before giving up.
-      let pdf;
-      try {
-        pdf = await pdfParse(buf);
-      } catch {
-        pdf = await pdfParse(buf);
-      }
+      const pdf = { text: await extractPdfText(buf) };
 
       const cash = parseTradeRepublicStatement(pdf.text);
       const cashRows = parseTradeRepublicCashRows(pdf.text);
