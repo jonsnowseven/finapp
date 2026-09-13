@@ -47,15 +47,34 @@ function mapType(raw: string): string {
   return TYPE_MAP[raw.toUpperCase()] ?? 'buy';
 }
 
+// English + Portuguese month abbreviations — the TR app statement is
+// generated in the user's device locale, so either can show up.
 const MONTHS: Record<string, string> = {
-  jan: '01', feb: '02', mar: '03', apr: '04', may: '05', jun: '06',
-  jul: '07', aug: '08', sep: '09', oct: '10', nov: '11', dec: '12',
+  jan: '01', feb: '02', fev: '02', mar: '03', apr: '04', abr: '04',
+  may: '05', mai: '05', jun: '06', jul: '07', aug: '08', ago: '08',
+  sep: '09', set: '09', oct: '10', out: '10', nov: '11', dec: '12', dez: '12',
 };
 
-// English-formatted amount: "13,338.59" → 13338.59 (comma thousands, dot decimal)
-function enNum(s: string): number {
-  return parseFloat(s.replace(/,/g, '')) || 0;
+// Locale-agnostic amount: last "." or "," before the final 2 digits is the
+// decimal separator; everything else (space, comma, dot) is a thousands
+// grouper and gets stripped. Handles "13,338.59" (EN) and "13 338,59" (PT).
+function anyNum(s: string): number {
+  const cleaned = s.replace(/[^\d.,]/g, '');
+  const lastSep = Math.max(cleaned.lastIndexOf(','), cleaned.lastIndexOf('.'));
+  if (lastSep < 0) return parseFloat(cleaned) || 0;
+  const intPart = cleaned.slice(0, lastSep).replace(/[.,]/g, '');
+  const decPart = cleaned.slice(lastSep + 1);
+  return parseFloat(`${intPart}.${decPart}`) || 0;
 }
+
+// Bounded thousands-group + 2-decimal money token. Matches "14,339.82" (EN,
+// comma groups) and "14 339,82" (PT, space groups). The PT thousands
+// separator extracts as a plain space — indistinguishable from an ordinary
+// word-space once text is flattened — so without boundary guards this can
+// bridge into an unrelated PRECEDING number (e.g. "quantity: 0.627746 200,00"
+// misreading as "746 200,00" = 746200). (?<![\d.,]) / (?!\d) force the match
+// to start/end at a true number boundary, not mid-digit-run.
+const MONEY_RE = '(?<![\\d.,])\\d{1,3}(?:[ ,.]\\d{3})*[.,]\\d{2}(?!\\d)';
 
 function toIso(day: string, month: string, year: string): string | null {
   const mm = MONTHS[month.slice(0, 3).toLowerCase()];
@@ -71,24 +90,27 @@ function parseTradeRepublicStatement(text: string): { as_of_date: string; value:
   const flat = text.replace(/\s+/g, ' ');
 
   // Ending cash balance = the 4th (last) money token of the "Checking Account"
-  // summary row (opening, money-in, money-out, ENDING). pdf-parse may glue the
-  // €-columns and drop/repeat spaces, so scan the summary region for money
-  // tokens (…,NNN.NN) rather than requiring fixed spacing.
+  // ("Conta corrente" in PT) summary row (opening, money-in, money-out,
+  // ENDING). pdf text extraction may glue the €-columns and drop/repeat
+  // spaces, so scan the summary region for money tokens rather than
+  // requiring fixed spacing.
   let value = NaN;
-  const start = flat.search(/Checking Account/i);
+  const start = flat.search(/Checking Account|Conta corrente/i);
   if (start >= 0) {
-    const endIdx = flat.search(/ACCOUNT TRANSACTIONS/i);
+    const endIdx = flat.search(/ACCOUNT TRANSACTIONS|TRANSAÇÕES/i);
     const region = flat.slice(start, endIdx > start ? endIdx : start + 200);
-    const amts = region.match(/\d[\d,]*\.\d{2}/g);   // English format: comma thousands, dot decimal
-    if (amts && amts.length >= 4) value = enNum(amts[3]);
-    else if (amts && amts.length) value = enNum(amts[amts.length - 1]);
+    const amts = region.match(new RegExp(MONEY_RE, 'g'));
+    if (amts && amts.length >= 4) value = anyNum(amts[3]);
+    else if (amts && amts.length) value = anyNum(amts[amts.length - 1]);
   }
   if (!isFinite(value) || value <= 0) return null;
 
-  // Statement end date: "01 May 2026 - 31 Jul 2026" (take the range end) or "as of 31 Jul 2026".
+  // Statement end date: "01 May 2026 - 31 Jul 2026" / "01 set. 2026 - 12 set. 2026"
+  // (take the range end) or "as of 31 Jul 2026". Month token may carry a
+  // trailing "." (PT abbreviations: "set.", "out.", ...).
   let as_of_date = new Date().toISOString().slice(0, 10);
-  const period = flat.match(/\d{1,2}\s+[A-Za-z]{3,}\s+\d{4}\s*[-–—]\s*(\d{1,2})\s+([A-Za-z]{3,})\s+(\d{4})/);
-  const asOf = flat.match(/as of\s+(\d{1,2})\s+([A-Za-z]{3,})\s+(\d{4})/i);
+  const period = flat.match(/\d{1,2}\s+[A-Za-zÀ-ÿ]{3,}\.?\s+\d{4}\s*[-–—]\s*(\d{1,2})\s+([A-Za-zÀ-ÿ]{3,})\.?\s+(\d{4})/);
+  const asOf = flat.match(/as of\s+(\d{1,2})\s+([A-Za-zÀ-ÿ]{3,})\.?\s+(\d{4})/i);
   const p = period ? [period[1], period[2], period[3]] : asOf ? [asOf[1], asOf[2], asOf[3]] : null;
   if (p) { const iso = toIso(p[0], p[1], p[2]); if (iso) as_of_date = iso; }
 
@@ -103,36 +125,41 @@ function parseTradeRepublicStatement(text: string): { as_of_date: string; value:
 // No merchant/IBAN/name text is stored — only date, type, amount (PII-free).
 function parseTradeRepublicCashRows(text: string): { date: string; type: string; amount: number; balance: number }[] {
   const flat = text.replace(/\s+/g, ' ');
-  // Anchor on each "DD Mon YYYY <Type>" row-start, then read the segment up to the
-  // next row-start. pdf-parse glues the € columns and glues the TYPE onto the
-  // description for Interest/Transfer ("InterestInterest payment", "TransferIncoming
-  // …"), so NO word boundary after the type — and money tokens are scanned from the
-  // segment rather than requiring € spacing.
-  const startRe = /(\d{1,2})\s+([A-Za-z]{3,})\s+(\d{4})\s+(Interest|Transfer|Trade)/g;
+  // Anchor on each "DD Mon YYYY <Type>" row-start (type label in EN or PT —
+  // the app localizes fixed column labels but leaves transaction
+  // descriptions in English regardless of locale), then read the segment up
+  // to the next row-start. pdf text extraction may glue the € columns and
+  // glue the TYPE onto the description ("InterestInterest payment",
+  // "TransferIncoming…"), so NO word boundary after the type — and money
+  // tokens are scanned from the segment rather than requiring € spacing.
+  // Month token may carry a trailing "." (PT abbreviations: "set.", "out.").
+  const TYPE_RE = 'Interest|Juros|Transfer(?:ência)?|Trade|Comércio';
+  const startRe = new RegExp(`(\\d{1,2})\\s+([A-Za-zÀ-ÿ]{3,})\\.?\\s+(\\d{4})\\s+(${TYPE_RE})`, 'g');
   const starts: { idx: number; end: number; d: string; mon: string; y: string; label: string }[] = [];
   let s: RegExpExecArray | null;
   while ((s = startRe.exec(flat))) starts.push({ idx: s.index, end: startRe.lastIndex, d: s[1], mon: s[2], y: s[3], label: s[4] });
 
+  const moneyRe = new RegExp(MONEY_RE, 'g');
   const out: { date: string; type: string; amount: number; balance: number }[] = [];
   for (let i = 0; i < starts.length; i++) {
     const row = starts[i];
     const iso = toIso(row.d, row.mon, row.y);
     if (!iso) continue;
     const seg = flat.slice(row.end, i + 1 < starts.length ? starts[i + 1].idx : flat.length);
-    const money = seg.match(/\d[\d,]*\.\d{2}(?![\d])/g);   // [amount, balance]
+    const money = seg.match(moneyRe);   // [amount, balance]
     if (!money?.length) continue;
-    const amount = enNum(money[0]);            // first token = money-in/out for the row
+    const amount = anyNum(money[0]);            // first token = money-in/out for the row
     if (!amount) continue;
-    const balance = money[1] ? enNum(money[1]) : 0;   // running balance = stable row id
+    const balance = money[1] ? anyNum(money[1]) : 0;   // running balance = stable row id
 
     // Classify the cash-account movement:
-    //  Interest        → interest in (+)
-    //  Transfer in     → deposit (+)     Transfer out → withdrawal (−)
-    //  Trade/Savings   → withdrawal (−)  money leaving cash to buy another TR product (ETF)
+    //  Interest/Juros        → interest in (+)
+    //  Transfer in            → deposit (+)     Transfer out → withdrawal (−)
+    //  Trade/Comércio/Savings → withdrawal (−)  money leaving cash to buy another TR product (ETF)
     let type: string;
-    if (row.label === 'Interest') type = 'interest';
-    else if (row.label === 'Trade') type = 'withdrawal';
-    else type = /incoming/i.test(seg) ? 'deposit' : 'withdrawal';   // Transfer
+    if (row.label === 'Interest' || row.label === 'Juros') type = 'interest';
+    else if (row.label === 'Trade' || row.label === 'Comércio') type = 'withdrawal';
+    else type = /incoming/i.test(seg) ? 'deposit' : 'withdrawal';   // Transfer/Transferência
     out.push({ date: iso, type, amount, balance });
   }
   return out;

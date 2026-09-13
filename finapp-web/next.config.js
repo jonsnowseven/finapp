@@ -6,6 +6,14 @@ const nextConfig = {
     // the resolution ("Cannot find module .../vendor-chunks/pdf.worker.mjs").
     // Exclude from bundling so Node resolves it against the real node_modules layout.
     serverComponentsExternalPackages: ['pdfjs-dist'],
+    // Vercel's deploy bundler (file tracing) only ships files it can see via
+    // static require()/import() calls — pdfjs-dist loads its worker via a
+    // dynamically-computed path, so the tracer misses it and the deployed
+    // function is missing the file ("Cannot find module /var/task/.../pdf.worker.mjs").
+    // Force it to be included alongside every route that parses PDFs.
+    outputFileTracingIncludes: {
+      '/api/import/**/*': ['./node_modules/pdfjs-dist/legacy/build/**/*'],
+    },
   },
 
   async headers() {
