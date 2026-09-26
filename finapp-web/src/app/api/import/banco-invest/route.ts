@@ -103,6 +103,86 @@ function parseBancoInvestCsv(text: string): {
   return { records, valuation };
 }
 
+// Native XLSX export of the same "Posição Actual" statement — numbers and
+// dates arrive as real Excel values (serial dates, native floats), not text,
+// unlike the CSV/PDF paths above.
+function parseBancoInvestXlsx(buf: Buffer): {
+  records: ReturnType<typeof parseBancoInvestPdf>;
+  valuation: ReturnType<typeof parseBancoInvestValuation>;
+} {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const XLSX = require('xlsx');
+  const wb = XLSX.read(buf, { type: 'buffer' });
+  const sheet = wb.Sheets[wb.SheetNames[0]];
+  const rows: unknown[][] = XLSX.utils.sheet_to_json(sheet, { header: 1, raw: true, defval: '' });
+
+  const cellStr = (v: unknown) => (v == null ? '' : String(v).trim());
+  const cellNum = (v: unknown) => (typeof v === 'number' ? v : parseFloat(cellStr(v)) || 0);
+  const excelDate = (v: unknown): string => {
+    if (typeof v !== 'number') return '';
+    const d = XLSX.SSF.parse_date_code(v);
+    if (!d) return '';
+    return `${d.y}-${String(d.m).padStart(2, '0')}-${String(d.d).padStart(2, '0')}`;
+  };
+
+  let account = 'unknown';
+  for (let i = 0; i < rows.length; i++) {
+    if (/^CONTA$/i.test(cellStr(rows[i][0])) && /^\d{5,}$/.test(cellStr(rows[i + 1]?.[0]))) {
+      account = cellStr(rows[i + 1][0]);
+      break;
+    }
+  }
+
+  // Statement date: standalone date-serial title row ("17-08-2026", no
+  // sibling cells) — distinct from the account number (also numeric, but
+  // far outside a plausible Excel-date-serial range) and the data rows
+  // (name/type text in the first column).
+  const dateRow = rows.find(r => typeof r[0] === 'number' && r[0] > 40000 && r[0] < 60000 && !r[1]);
+  const as_of_date = dateRow ? excelDate(dateRow[0]) : new Date().toISOString().slice(0, 10);
+
+  let valuation: { as_of_date: string; value: number; units: number | null } | null = null;
+  const summaryHeaderIdx = rows.findIndex(r => /^TITULAR$/i.test(cellStr(r[0])) && /IN[ÍI]CIO/i.test(cellStr(r[1])));
+  if (summaryHeaderIdx >= 0 && rows[summaryHeaderIdx + 1]) {
+    const sr = rows[summaryHeaderIdx + 1];
+    const units = cellNum(sr[2]);
+    const value = cellNum(sr[7]);
+    if (value) valuation = { as_of_date, value, units: units || null };
+  }
+
+  const lotsHeaderIdx = rows.findIndex(r => /^TIPO$/i.test(cellStr(r[0])) && /DATA/i.test(cellStr(r[1])));
+  const records: ReturnType<typeof parseBancoInvestPdf> = [];
+  let rowIdx = 0;
+  if (lotsHeaderIdx >= 0) {
+    for (let i = lotsHeaderIdx + 1; i < rows.length; i++) {
+      const r = rows[i];
+      if (!cellStr(r[0]) || /bancoinvest\.pt/i.test(cellStr(r[0]))) break;
+
+      const date = excelDate(r[1]);
+      if (!date) continue;
+      const qty = cellNum(r[2]);
+      const price = cellNum(r[3]);
+      if (qty === 0 || price === 0) continue;
+
+      const amount = parseFloat((qty * price).toFixed(2));
+      records.push({
+        date,
+        entity: 'Banco Invest',
+        asset_name: 'Alves Ribeiro PPR',
+        transaction_type: 'buy',
+        quantity: qty,
+        price,
+        amount,
+        currency: 'EUR',
+        fees: 0,
+        source_document: `bancoinvest_${account}_${date}_${rowIdx}`,
+      });
+      rowIdx++;
+    }
+  }
+
+  return { records, valuation };
+}
+
 function parseBancoInvestPdf(text: string) {
   const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
 
@@ -200,12 +280,17 @@ export async function POST(request: Request) {
     if (!file) return NextResponse.json({ error: 'No file uploaded' }, { status: 400 });
 
     const isCsv = /\.csv$/i.test(file.name) || file.type === 'text/csv';
+    const isXlsx = /\.xlsx$/i.test(file.name) || file.type === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
 
     let records: ReturnType<typeof parseBancoInvestPdf>;
     let val: ReturnType<typeof parseBancoInvestValuation>;
 
     if (isCsv) {
       const parsed = parseBancoInvestCsv(await file.text());
+      records = parsed.records;
+      val = parsed.valuation;
+    } else if (isXlsx) {
+      const parsed = parseBancoInvestXlsx(Buffer.from(await file.arrayBuffer()));
       records = parsed.records;
       val = parsed.valuation;
     } else {

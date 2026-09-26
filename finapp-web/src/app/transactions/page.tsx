@@ -17,7 +17,7 @@ const IMPORT_SOURCES: { key: ImportKey; label: string; hint: string }[] = [
   { key: 'kraken',      label: 'Kraken (PDF)',             hint: 'Kraken.com → History → Export → request a Ledgers/Trades statement, then download the PDF.' },
   { key: 'degiro',      label: 'DeGiro (PDF)',             hint: 'DeGiro → Activity (Atividade) → Account statement / Transactions → Export → PDF.' },
   { key: 'tr',          label: 'Trade Republic (CSV/PDF)',  hint: 'CSV: app → Profile → Transactions → Export (ETF trades). PDF: app → account statement (adds cash at interest — escrow + money-market fund balance).' },
-  { key: 'bancoinvest', label: 'Banco Invest PPR (PDF)',   hint: 'Banco Invest (Alves Ribeiro) → PPR → Posição Atual → export/print the position report as PDF.' },
+  { key: 'bancoinvest', label: 'Banco Invest PPR (PDF/CSV/XLSX)', hint: 'Banco Invest (Alves Ribeiro) → PPR → Posição Atual → export as PDF, CSV, or XLSX.' },
   { key: 'sgf',         label: 'SGF PPR (PDF)',            hint: 'Golden SGF portal → Recibos / Documentos → download the subscription receipt PDF.' },
   { key: 'revolut',     label: 'Revolut Boosted (PDF)',    hint: 'Revolut app → Account → Statement → generate the EUR account statement (PDF).' },
   { key: 'aforro',      label: 'Certificados Aforro (PDF)', hint: 'IGCP / Aforro Net → Conta Aforro → Extrato → download the statement PDF.' },
@@ -208,8 +208,9 @@ export default function TransactionsPage() {
       {showImport === 'bancoinvest' && (
         <ImportModal
           title="Import Banco Invest PPR"
-          description="Upload a PDF position report from Banco Invest (Alves Ribeiro PPR)"
+          description="Upload a PDF, CSV, or XLSX position report from Banco Invest (Alves Ribeiro PPR)"
           endpoint="/api/import/banco-invest"
+          accept=".pdf,.csv,.xlsx"
           hint={hintFor('bancoinvest')}
           onClose={() => setShowImport(null)}
           onImported={() => { setShowImport(null); handleRefresh(); }}
