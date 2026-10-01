@@ -201,7 +201,9 @@ export function parseSantanderPdf(text: string): ParsedRow[] {
 
   const MONEY = /\d{1,3}(?:\.\d{3})*,\d{2}/g;
   const D = String.raw`(?:0[1-9]|[12]\d|3[01])-(?:0[1-9]|1[0-2])`;      // DD-MM
-  const rowRe = new RegExp(`(${D})(${D})(.+?)(?=(?:${D})(?:${D})|Saldo |$)`, 'g');
+  // Date columns may render glued together (no separator) or space-separated,
+  // depending on the PDF text-extraction engine — tolerate both.
+  const rowRe = new RegExp(`(${D}) ?(${D})(.+?)(?=(?:${D}) ?(?:${D})|Saldo |$)`, 'g');
 
   const rows: ParsedRow[] = [];
   let m: RegExpExecArray | null;
