@@ -13,7 +13,7 @@ import NetWorthChart from '../components/NetWorthChart';
 import Card from '../components/Card';
 import Tooltip from '../components/Tooltip';
 import { reportError } from '../lib/devError';
-import { AreaChart, Area, ResponsiveContainer } from 'recharts';
+import { AreaChart, Area, ResponsiveContainer, Tooltip as RTooltip, YAxis } from 'recharts';
 import { RefreshCw, Eye, EyeOff } from 'lucide-react';
 
 interface EntityBalance {
@@ -30,6 +30,7 @@ export default function HomePage() {
   const [entityBalances, setEntityBalances] = useState<EntityBalance[]>([]);
   const [xirrRate, setXirrRate] = useState<number | null>(null);
   const [snapshots, setSnapshots] = useState<{ as_of: string; total: number }[]>([]);
+  const [entityHistory, setEntityHistory] = useState<Record<string, { as_of: string; value: number }[]>>({});
   const [expenseRows, setExpenseRows] = useState<ExpenseRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -477,9 +478,19 @@ export default function HomePage() {
           });
         } catch { /* ignore */ }
       }
-      const { data: snaps, error: snapsError } = await supabase.from('snapshots').select('as_of, total').order('as_of', { ascending: true });
+      const { data: snaps, error: snapsError } = await supabase.from('snapshots').select('as_of, total, by_entity').order('as_of', { ascending: true });
       if (snapsError) reportError('dashboard: snapshots load', snapsError);
-      if (snaps) setSnapshots(snaps.map((s) => ({ as_of: s.as_of, total: Number(s.total) })));
+      if (snaps) {
+        setSnapshots(snaps.map((s) => ({ as_of: s.as_of, total: Number(s.total) })));
+        // Per-institution series for the card sparklines (daily by_entity breakdown).
+        const hist: Record<string, { as_of: string; value: number }[]> = {};
+        for (const s of snaps) {
+          for (const [ent, v] of Object.entries((s.by_entity ?? {}) as Record<string, number>)) {
+            (hist[ent] ??= []).push({ as_of: s.as_of, value: Number(v) });
+          }
+        }
+        setEntityHistory(hist);
+      }
 
       // Expenses ledger (for the AI report's cashflow section). Ignored if table absent.
       const { data: exp, error: expError } = await supabase.from('expenses').select('date, amount, tag, tag_label');
@@ -649,6 +660,9 @@ export default function HomePage() {
                 ) : (
                   <p className="text-xs text-gray-400 dark:text-ink-faint mt-1.5">{count} operation{count !== 1 ? 's' : ''}</p>
                 )}
+                {(entityHistory[entity]?.length ?? 0) >= 2 && !hideBalance && (
+                  <EntitySparkline entity={entity} data={entityHistory[entity]} />
+                )}
               </Card>
             ))}
           </div>
@@ -684,5 +698,48 @@ export default function HomePage() {
         </>
       )}
     </main>
+  );
+}
+
+// Small balance-over-time chart for an institution card, from daily snapshots.
+function EntitySparkline({ entity, data }: { entity: string; data: { as_of: string; value: number }[] }) {
+  const color = entityHex(entity);
+  const gradId = `spark-${entity.replace(/[^a-z0-9]/gi, '')}`;
+  const first = data[0].value;
+  const last = data[data.length - 1].value;
+  const delta = last - first;
+  const pct = first ? (delta / first) * 100 : 0;
+  const eur = (n: number) => `€${n.toLocaleString('pt-PT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
+  return (
+    <div className="mt-3 -mx-1">
+      <div className="h-12">
+        <ResponsiveContainer width="100%" height="100%">
+          <AreaChart data={data} margin={{ top: 2, right: 2, left: 2, bottom: 0 }}>
+            <defs>
+              <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%" stopColor={color} stopOpacity={0.3} />
+                <stop offset="95%" stopColor={color} stopOpacity={0.02} />
+              </linearGradient>
+            </defs>
+            <YAxis hide domain={['dataMin', 'dataMax']} />
+            <RTooltip
+              cursor={{ stroke: color, strokeOpacity: 0.3 }}
+              contentStyle={{ background: '#171717', border: '1px solid #282828', borderRadius: 8, fontSize: 11, padding: '4px 8px' }}
+              labelStyle={{ color: '#a3a3a3' }}
+              itemStyle={{ color: '#fff' }}
+              formatter={(v: number) => [eur(v), '']}
+              separator=""
+              labelFormatter={(_, p) => p?.[0]?.payload?.as_of ?? ''}
+            />
+            <Area type="monotone" dataKey="value" stroke={color} strokeWidth={1.5} fill={`url(#${gradId})`} dot={false}
+              isAnimationActive animationDuration={800} animationEasing="ease-out" />
+          </AreaChart>
+        </ResponsiveContainer>
+      </div>
+      <p className={`text-[11px] mt-1 px-1 font-num ${delta >= 0 ? 'text-green-600 dark:text-gain' : 'text-red-500 dark:text-loss'}`}>
+        {delta >= 0 ? '+' : ''}{eur(delta)} ({pct >= 0 ? '+' : ''}{pct.toFixed(1)}%) <span className="text-gray-400 dark:text-ink-faint">since {data[0].as_of}</span>
+      </p>
+    </div>
   );
 }
