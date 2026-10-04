@@ -243,8 +243,14 @@ export function parseSantanderLoanPdf(text: string): { balance: number; payment:
     const montante = ptPdfNum(m[5]);
     const saldo = ptPdfNum(m[6]);
     const g = groups[presta] ?? (groups[presta] = { presta });
-    if (type.startsWith('JUROS')) g.juros = Math.abs(montante);
-    else if (type.startsWith('CAPIT')) { g.capital = Math.abs(montante); g.capSaldo = saldo; }
+    // An instalment can carry several JUROS/CAPIT rows on the same date (e.g. a
+    // split principal payment) — sum them; the outstanding balance after the
+    // last principal movement is the lowest CAPIT saldo in the group.
+    if (type.startsWith('JUROS')) g.juros = (g.juros ?? 0) + Math.abs(montante);
+    else if (type.startsWith('CAPIT')) {
+      g.capital = (g.capital ?? 0) + Math.abs(montante);
+      g.capSaldo = g.capSaldo == null ? saldo : Math.min(g.capSaldo, saldo);
+    }
   }
   const latest = Object.values(groups).sort((a, b) => b.presta - a.presta)[0];
   if (!latest || latest.capSaldo == null) return null;
