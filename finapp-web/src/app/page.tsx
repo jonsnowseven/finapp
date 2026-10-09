@@ -45,6 +45,22 @@ export default function HomePage() {
   const { hidden: hideBalance, toggle: toggleHide, money } = useHideBalance();
 
   const brand = useBrandColor('500');
+  // FIRE safe-withdrawal rate — same setting the Forecast page edits (default 4%).
+  const [swr, setSwr] = useState(4);
+  useEffect(() => {
+    try {
+      const s = JSON.parse(localStorage.getItem('finapp_fire') || 'null');
+      if (typeof s?.swr === 'number') setSwr(s.swr);
+    } catch { /* ignore */ }
+    Promise.resolve(supabase.from('forecast_settings').select('fire').limit(1).maybeSingle())
+      .then(({ data, error }) => {
+        if (error) reportError('forecast_settings (swr) load', error);
+        if (typeof data?.fire?.swr === 'number') setSwr(data.fire.swr);
+      })
+      .catch((err) => reportError('forecast_settings (swr) load', err));
+  }, []);
+  const monthlyWithdrawal = (metrics.totalValue * swr) / 100 / 12;
+
   const animatedTotal = useCountUp(metrics.totalValue);
   const animatedFees = useCountUp(metrics.totalFees);
   const animatedOps = useCountUp(metrics.transactionCount);
@@ -613,6 +629,20 @@ export default function HomePage() {
                 <p className="font-num text-xl mt-1.5 text-red-500 dark:text-loss">
                   {hideBalance ? '••••••' : `€${animatedFees.toLocaleString('pt-PT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
                 </p>
+              </div>
+              <div>
+                <Tooltip text={`FIRE safe withdrawal: ${swr}% of the total portfolio per year, divided by 12. Change the rate on the Forecast page (FIRE settings).`}>
+                  <p className="label-caps text-gray-400 dark:text-ink-muted">Safe Withdrawal ({swr}%) ⓘ</p>
+                </Tooltip>
+                <p className="font-num text-xl mt-1.5 text-green-600 dark:text-gain">
+                  {hideBalance ? '••••••' : `€${monthlyWithdrawal.toLocaleString('pt-PT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+                  <span className="text-sm text-gray-400 dark:text-ink-muted font-sans"> /month</span>
+                </p>
+                {!hideBalance && (
+                  <p className="text-xs text-gray-400 dark:text-ink-faint mt-0.5">
+                    €{(monthlyWithdrawal * 12).toLocaleString('pt-PT', { minimumFractionDigits: 0, maximumFractionDigits: 0 })} /year
+                  </p>
+                )}
               </div>
             </div>
           </Card>
