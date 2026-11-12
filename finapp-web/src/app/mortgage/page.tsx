@@ -4,6 +4,7 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import { supabase } from '../../lib/supabase';
 import { useHideBalance } from '../../lib/useHideBalance';
 import EyeToggle from '../../components/EyeToggle';
+import InfoTooltip from '../../components/Tooltip';
 import { TENORS, type Tenor } from '../../lib/euribor';
 import { reportError } from '../../lib/devError';
 
@@ -31,6 +32,27 @@ const annuity = (P: number, annualPct: number, n: number) => {
   const r = annualPct / 1200;
   return r > 0 ? (P * r) / (1 - Math.pow(1 + r, -n)) : P / n;
 };
+
+// Month-by-month run of a loan: fixed payment plus optional extra amortization
+// per month (extraAt returns the extra paid in that month, 0-based index).
+interface SimRow { month: number; payment: number; interest: number; principal: number; extra: number; balance: number }
+function simulate(balance: number, monthlyRate: number, payment: number, maxMonths: number, extraAt: (i: number) => number) {
+  const rows: SimRow[] = [];
+  let bal = balance;
+  let interestTotal = 0;
+  let extraTotal = 0;
+  for (let i = 0; i < maxMonths && bal > 0.005; i++) {
+    const interest = bal * monthlyRate;
+    const principal = Math.min(payment - interest, bal);
+    bal -= principal;
+    const extra = Math.min(Math.max(extraAt(i), 0), bal);
+    bal -= extra;
+    interestTotal += interest;
+    extraTotal += extra;
+    rows.push({ month: i, payment: interest + principal, interest, principal, extra, balance: Math.max(bal, 0) });
+  }
+  return { rows, months: rows.length, interestTotal, extraTotal };
+}
 
 export default function MortgagePage() {
   const { money, hidden } = useHideBalance();
@@ -134,6 +156,63 @@ export default function MortgagePage() {
 
   const pct = (n: number | null) => (n == null ? '—' : `${n.toFixed(3)}%`);
 
+  // ── Simulators ────────────────────────────────────────────────────────────
+  // Baseline = annuity at the effective rate over the remaining term, so both
+  // simulators compare like with like (the imported payment can include
+  // one-off extra principal).
+  const n = m.remainingMonths;
+  const r = effRate / 1200;
+  const basePay = annuity(m.balance, effRate, n);
+  const baseInterest = basePay * n - m.balance;
+
+  // 1) Amortize an amount, keep the term → lower payment.
+  const [amortAmt, setAmortAmt] = useState(0);
+  const [feePct, setFeePct] = useState(0);
+  const amt = Math.min(Math.max(amortAmt, 0), m.balance);
+  const simBalance = m.balance - amt;
+  const simPay = annuity(simBalance, effRate, n);
+  const simInterest = simPay * n - simBalance;
+  const simFee = amt * (feePct / 100);
+
+  // Recurring amortization on top (after the one-off): payment stays, term shortens.
+  const [recurAmt, setRecurAmt] = useState(0);
+  const [recurFreq, setRecurFreq] = useState<'monthly' | 'yearly'>('monthly');
+  const recurEvery = recurFreq === 'monthly' ? 1 : 12;
+  const recurSim = useMemo(
+    () => simulate(simBalance, r, simPay, n, (i) => (recurAmt > 0 && (i + 1) % recurEvery === 0 ? recurAmt : 0)),
+    [simBalance, r, simPay, n, recurAmt, recurEvery],
+  );
+  const recurActive = recurAmt > 0 && simBalance > 0;
+  const recurMonthsSaved = n - recurSim.months;
+  const recurFees = recurSim.extraTotal * (feePct / 100);
+
+  // 2) Cut the term, keep the payment → lump sum (or extra/month) needed.
+  const [cutValue, setCutValue] = useState(0);
+  const [cutUnit, setCutUnit] = useState<'months' | 'years'>('years');
+  const cutMonths = Math.round(cutUnit === 'years' ? cutValue * 12 : cutValue);
+  const newN = n - cutMonths;
+  const cutValid = cutMonths > 0 && newN > 0 && m.balance > 0;
+  // Balance the current payment pays off in newN months (present value of the annuity).
+  const targetBalance = cutValid ? (r > 0 ? basePay * (1 - Math.pow(1 + r, -newN)) / r : basePay * newN) : m.balance;
+  const lumpSum = cutValid ? m.balance - targetBalance : 0;
+  const lumpInterest = cutValid ? basePay * newN - targetBalance : baseInterest;
+  const extraMonthly = cutValid ? annuity(m.balance, effRate, newN) - basePay : 0;
+  const extraInterest = cutValid ? (basePay + extraMonthly) * newN - m.balance : baseInterest;
+
+  // Monthly plan: regular payment + the same extra amortization every month,
+  // compared against the current plan's balance in the same month.
+  const plan = useMemo(() => {
+    if (!cutValid) return [];
+    const withExtra = simulate(m.balance, r, basePay, n, () => extraMonthly).rows;
+    const current = simulate(m.balance, r, basePay, n, () => 0).rows;
+    return withExtra.map((row) => ({ ...row, baseBalance: current[row.month]?.balance ?? 0 }));
+  }, [cutValid, m.balance, r, basePay, n, extraMonthly]);
+
+  const endDate = (monthsFromNow: number) => {
+    const d = new Date(); d.setMonth(d.getMonth() + monthsFromNow);
+    return d.toLocaleString('en', { month: 'short', year: 'numeric' });
+  };
+
   return (
     <main className="max-w-7xl mx-auto p-6 md:p-8">
       <div className="mb-8 flex items-start justify-between gap-4">
@@ -231,6 +310,142 @@ export default function MortgagePage() {
           </div>
         </div>
       </div>
+
+      {/* Simulator 1: amortize an amount → lower payment */}
+      <h3 className="text-lg font-bold mt-10 mb-1">Simulate an amortization</h3>
+      <p className="text-gray-500 dark:text-ink-muted text-sm mb-4">
+        Pay down part of the debt now and keep the same end date — the monthly payment drops.
+      </p>
+      <div className="bg-white dark:bg-surface p-4 rounded-2xl border border-gray-200 dark:border-line mb-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          <Field label="Amortization amount (€)">
+            <div className={hidden ? 'blur-sm select-none pointer-events-none' : ''}>
+              <NumInput value={amortAmt} step={1000} onChange={setAmortAmt} />
+            </div>
+          </Field>
+          <Field label="Early-repayment fee (%)"><NumInput value={feePct} step={0.1} onChange={setFeePct} /></Field>
+          <Field label="Recurring amortization (€)">
+            <div className={hidden ? 'blur-sm select-none pointer-events-none' : ''}>
+              <NumInput value={recurAmt} step={50} onChange={setRecurAmt} />
+            </div>
+          </Field>
+          <Field label="Every">
+            <select value={recurFreq} onChange={(e) => setRecurFreq(e.target.value as 'monthly' | 'yearly')} className={inp}>
+              <option value="monthly">Month</option>
+              <option value="yearly">Year</option>
+            </select>
+          </Field>
+        </div>
+        <p className="text-[11px] text-gray-400 mt-3">
+          Based on {money(m.balance)} at {effRate.toFixed(3)}% over {n} remaining months (baseline payment {money(basePay)}).
+          PT variable-rate housing loans cap the early-repayment fee (comissão) at 0.5% — check your contract.
+          {amortAmt > m.balance && m.balance > 0 ? ' Amount capped at the outstanding balance.' : ''}
+        </p>
+      </div>
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        <Card label="New debt" value={money(simBalance)} sub={amt > 0 ? `−${money(amt)}` : 'enter an amount'} accent />
+        <Card label="New monthly payment" value={money(simPay)}
+          sub={amt > 0 ? `−${money(basePay - simPay)}/mo vs ${money(basePay)}` : `now ${money(basePay)}`}
+          good={amt > 0} />
+        <Card label="Interest saved (to payoff)" value={amt > 0 ? money(baseInterest - simInterest) : '—'}
+          sub={amt > 0 ? `${money(simInterest)} left to pay` : ''} good={amt > 0} />
+        <Card label="Cash needed now" value={amt > 0 ? money(amt + simFee) : '—'}
+          sub={simFee > 0 ? `incl. ${money(simFee)} fee` : 'no fee'} />
+      </div>
+
+      {recurActive && (
+        <>
+          <p className="label-caps text-gray-400 dark:text-ink-muted mb-3">
+            + {money(recurAmt)} every {recurFreq === 'monthly' ? 'month' : 'year'} · payment stays {money(simPay)}, term shortens
+          </p>
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+            <Card label="Paid off" value={endDate(recurSim.months)} sub={`${recurSim.months} months instead of ${n}`} accent
+              info="When the loan ends if you keep paying the regular payment and add the recurring amortization on top. Each amortization goes straight to principal, so the debt — and the interest charged on it — shrinks faster." />
+            <Card label="Time saved" value={`${(recurMonthsSaved / 12).toFixed(1)}y`} sub={`${recurMonthsSaved} months earlier`} good />
+            <Card label="Interest saved (to payoff)" value={money(simInterest - recurSim.interestTotal)} good
+              sub={amt > 0 ? 'on top of the one-off amount' : ''}
+              info="Interest you'd avoid versus paying only the regular payment until the original end date. Compared after any one-off amortization above." />
+            <Card label="Total extra paid" value={money(recurSim.extraTotal + recurFees)}
+              sub={recurFees > 0 ? `incl. ${money(recurFees)} fees` : 'over the life of the loan'} />
+          </div>
+        </>
+      )}
+
+      {/* Simulator 2: cut the term → amortization plan */}
+      <h3 className="text-lg font-bold mt-10 mb-1">Shorten the mortgage</h3>
+      <p className="text-gray-500 dark:text-ink-muted text-sm mb-4">
+        Choose how much earlier to finish while keeping today&apos;s payment — see what it takes and the resulting plan.
+      </p>
+      <div className="bg-white dark:bg-surface p-4 rounded-2xl border border-gray-200 dark:border-line mb-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          <Field label={`Reduce term by (${cutUnit})`}><NumInput value={cutValue} step={1} onChange={setCutValue} /></Field>
+          <Field label="Unit">
+            <select value={cutUnit} onChange={(e) => setCutUnit(e.target.value as 'months' | 'years')} className={inp}>
+              <option value="years">Years</option>
+              <option value="months">Months</option>
+            </select>
+          </Field>
+        </div>
+        <p className="text-[11px] text-gray-400 mt-3">
+          {cutValid
+            ? `${n} → ${newN} months: finishes ${endDate(newN)} instead of ${endDate(n)}.`
+            : cutMonths >= n && cutMonths > 0
+              ? `Can't cut ${cutMonths} months — only ${n} remain.`
+              : 'Enter how many months or years to cut.'}
+        </p>
+      </div>
+
+      {cutValid && (
+        <>
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+            <Card label="Extra amortization / month" value={money(extraMonthly)} sub={`${money(basePay + extraMonthly)}/mo in total`} accent
+              info="Pay this on top of your regular payment every month, as a partial amortization ('reduzir prazo'). The extra goes straight to principal, so the loan finishes the chosen months earlier. The plan below shows it month by month." />
+            <Card label="Interest saved (monthly)" value={money(baseInterest - extraInterest)} good
+              info="Interest you avoid over the life of the loan with the monthly extra, versus the current plan." />
+            <Card label="Or: lump sum now" value={money(lumpSum)} sub={`then keep ${money(basePay)}/mo`}
+              info="A single partial amortization today, choosing to shorten the term ('reduzir prazo') instead of lowering the payment. You keep paying the same amount each month and finish the chosen months earlier. It's the debt your current payment can no longer cover in the shorter term." />
+            <Card label="Interest saved (lump sum)" value={money(baseInterest - lumpInterest)} good
+              info="Saves more interest than the monthly route because the principal drops immediately, so interest is charged on a smaller balance from day one. The trade-off: you need all the cash up front." />
+          </div>
+
+          <div className="bg-white dark:bg-surface rounded-2xl border border-gray-200 dark:border-line overflow-hidden mb-6">
+            <div className="px-6 pt-5 pb-3">
+              <p className="label-caps text-gray-400 dark:text-ink-muted">Monthly amortization plan</p>
+              <p className="text-sm text-gray-500 dark:text-ink-muted mt-1">
+                Each month: pay the regular {money(basePay)} and amortize an extra {money(extraMonthly)} → loan finishes {endDate(plan.length)} ({plan.length} months).
+              </p>
+            </div>
+            <div className={`overflow-x-auto max-h-[480px] overflow-y-auto ${hidden ? 'blur-sm select-none pointer-events-none' : ''}`}>
+              <table className="w-full text-left text-sm min-w-[760px]">
+                <thead className="sticky top-0 bg-gray-50 dark:bg-surface-2">
+                  <tr className="border-b border-gray-200 dark:border-line label-caps text-gray-500 dark:text-brand-500">
+                    <th className="p-3">Month</th>
+                    <th className="p-3 text-right">Regular payment</th>
+                    <th className="p-3 text-right">of which interest</th>
+                    <th className="p-3 text-right">Extra amortization</th>
+                    <th className="p-3 text-right">Total to pay</th>
+                    <th className="p-3 text-right">Balance after</th>
+                    <th className="p-3 text-right">Current plan</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100 dark:divide-gray-800/50 font-num">
+                  {plan.map((row) => (
+                    <tr key={row.month}>
+                      <td className="p-3 font-sans whitespace-nowrap">{row.month + 1} · {endDate(row.month + 1)}</td>
+                      <td className="p-3 text-right">{money(row.payment)}</td>
+                      <td className="p-3 text-right text-red-500 dark:text-loss">{money(row.interest)}</td>
+                      <td className="p-3 text-right text-indigo-600 dark:text-brand-500">{money(row.extra)}</td>
+                      <td className="p-3 text-right font-semibold">{money(row.payment + row.extra)}</td>
+                      <td className="p-3 text-right">{money(row.balance)}</td>
+                      <td className="p-3 text-right text-gray-400 dark:text-ink-faint">{money(row.baseBalance)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </>
+      )}
     </main>
   );
 }
@@ -253,10 +468,16 @@ function NumInput({ value, step, onChange }: { value: number; step: number; onCh
   );
 }
 
-function Card({ label, value, sub, accent, good, bad }: { label: string; value: string; sub?: string; accent?: boolean; good?: boolean; bad?: boolean }) {
+function Card({ label, value, sub, accent, good, bad, info }: { label: string; value: string; sub?: string; accent?: boolean; good?: boolean; bad?: boolean; info?: string }) {
   return (
     <div className="bg-white dark:bg-surface p-5 rounded-xl border border-gray-200 dark:border-line">
-      <p className="label-caps text-gray-400 dark:text-ink-muted">{label}</p>
+      {info ? (
+        <InfoTooltip text={info}>
+          <p className="label-caps text-gray-400 dark:text-ink-muted">{label} <span className="normal-case">ⓘ</span></p>
+        </InfoTooltip>
+      ) : (
+        <p className="label-caps text-gray-400 dark:text-ink-muted">{label}</p>
+      )}
       <p className={`font-num text-2xl mt-2.5 ${good ? 'text-green-600 dark:text-gain' : bad ? 'text-red-500 dark:text-loss' : accent ? 'text-indigo-600 dark:text-brand-500' : 'dark:text-ink'}`}>{value}</p>
       {sub && <p className="text-xs text-gray-400 dark:text-ink-faint mt-1">{sub}</p>}
     </div>
