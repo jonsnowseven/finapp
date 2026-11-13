@@ -198,6 +198,10 @@ export default function MortgagePage() {
   const lumpInterest = cutValid ? basePay * newN - targetBalance : baseInterest;
   const extraMonthly = cutValid ? annuity(m.balance, effRate, newN) - basePay : 0;
   const extraInterest = cutValid ? (basePay + extraMonthly) * newN - m.balance : baseInterest;
+  // Early-repayment fee (shared with simulator 1) charged on every amount amortized.
+  const feeRate = feePct / 100;
+  const lumpFee = lumpSum * feeRate;
+  const monthlyFee = extraMonthly * feeRate;
 
   // Monthly plan: regular payment + the same extra amortization every month,
   // compared against the current plan's balance in the same month.
@@ -207,6 +211,8 @@ export default function MortgagePage() {
     const current = simulate(m.balance, r, basePay, n, () => 0).rows;
     return withExtra.map((row) => ({ ...row, baseBalance: current[row.month]?.balance ?? 0 }));
   }, [cutValid, m.balance, r, basePay, n, extraMonthly]);
+
+  const planFees = plan.reduce((t, row) => t + row.extra * feeRate, 0);
 
   const endDate = (monthsFromNow: number) => {
     const d = new Date(); d.setMonth(d.getMonth() + monthsFromNow);
@@ -363,7 +369,9 @@ export default function MortgagePage() {
               info="When the loan ends if you keep paying the regular payment and add the recurring amortization on top. Each amortization goes straight to principal, so the debt — and the interest charged on it — shrinks faster." />
             <Card label="Time saved" value={`${(recurMonthsSaved / 12).toFixed(1)}y`} sub={`${recurMonthsSaved} months earlier`} good />
             <Card label="Interest saved (to payoff)" value={money(simInterest - recurSim.interestTotal)} good
-              sub={amt > 0 ? 'on top of the one-off amount' : ''}
+              sub={recurFees > 0
+                ? `${money(simInterest - recurSim.interestTotal - recurFees)} net of fees`
+                : amt > 0 ? 'on top of the one-off amount' : ''}
               info="Interest you'd avoid versus paying only the regular payment until the original end date. Compared after any one-off amortization above." />
             <Card label="Total extra paid" value={money(recurSim.extraTotal + recurFees)}
               sub={recurFees > 0 ? `incl. ${money(recurFees)} fees` : 'over the life of the loan'} />
@@ -385,10 +393,11 @@ export default function MortgagePage() {
               <option value="months">Months</option>
             </select>
           </Field>
+          <Field label="Early-repayment fee (%)"><NumInput value={feePct} step={0.1} onChange={setFeePct} /></Field>
         </div>
         <p className="text-[11px] text-gray-400 mt-3">
           {cutValid
-            ? `${n} → ${newN} months: finishes ${endDate(newN)} instead of ${endDate(n)}.`
+            ? `${n} → ${newN} months: finishes ${endDate(newN)} instead of ${endDate(n)}.${feePct > 0 ? ` Fee of ${feePct}% applied to every amount amortized (same as above).` : ''}`
             : cutMonths >= n && cutMonths > 0
               ? `Can't cut ${cutMonths} months — only ${n} remain.`
               : 'Enter how many months or years to cut.'}
@@ -398,13 +407,19 @@ export default function MortgagePage() {
       {cutValid && (
         <>
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-            <Card label="Extra amortization / month" value={money(extraMonthly)} sub={`${money(basePay + extraMonthly)}/mo in total`} accent
+            <Card label="Extra amortization / month" value={money(extraMonthly)}
+              sub={monthlyFee > 0
+                ? `+ ${money(monthlyFee)} fee → ${money(basePay + extraMonthly + monthlyFee)}/mo in total`
+                : `${money(basePay + extraMonthly)}/mo in total`} accent
               info="Pay this on top of your regular payment every month, as a partial amortization ('reduzir prazo'). The extra goes straight to principal, so the loan finishes the chosen months earlier. The plan below shows it month by month." />
             <Card label="Interest saved (monthly)" value={money(baseInterest - extraInterest)} good
-              info="Interest you avoid over the life of the loan with the monthly extra, versus the current plan." />
-            <Card label="Or: lump sum now" value={money(lumpSum)} sub={`then keep ${money(basePay)}/mo`}
+              sub={monthlyFee > 0 ? `${money(baseInterest - extraInterest - planFees)} net of ${money(planFees)} fees` : ''}
+              info="Interest you avoid over the life of the loan with the monthly extra, versus the current plan. With a fee, the net figure subtracts the fee paid on every monthly amortization." />
+            <Card label="Or: lump sum now" value={money(lumpSum)}
+              sub={lumpFee > 0 ? `+ ${money(lumpFee)} fee → ${money(lumpSum + lumpFee)} cash` : `then keep ${money(basePay)}/mo`}
               info="A single partial amortization today, choosing to shorten the term ('reduzir prazo') instead of lowering the payment. You keep paying the same amount each month and finish the chosen months earlier. It's the debt your current payment can no longer cover in the shorter term." />
             <Card label="Interest saved (lump sum)" value={money(baseInterest - lumpInterest)} good
+              sub={lumpFee > 0 ? `${money(baseInterest - lumpInterest - lumpFee)} net of fee` : ''}
               info="Saves more interest than the monthly route because the principal drops immediately, so interest is charged on a smaller balance from day one. The trade-off: you need all the cash up front." />
           </div>
 
@@ -412,7 +427,7 @@ export default function MortgagePage() {
             <div className="px-6 pt-5 pb-3">
               <p className="label-caps text-gray-400 dark:text-ink-muted">Monthly amortization plan</p>
               <p className="text-sm text-gray-500 dark:text-ink-muted mt-1">
-                Each month: pay the regular {money(basePay)} and amortize an extra {money(extraMonthly)} → loan finishes {endDate(plan.length)} ({plan.length} months).
+                Each month: pay the regular {money(basePay)} and amortize an extra {money(extraMonthly)}{monthlyFee > 0 ? ` (+ ${money(monthlyFee)} fee)` : ''} → loan finishes {endDate(plan.length)} ({plan.length} months).
               </p>
             </div>
             <div className={`overflow-x-auto max-h-[480px] overflow-y-auto ${hidden ? 'blur-sm select-none pointer-events-none' : ''}`}>
@@ -423,6 +438,7 @@ export default function MortgagePage() {
                     <th className="p-3 text-right">Regular payment</th>
                     <th className="p-3 text-right">of which interest</th>
                     <th className="p-3 text-right">Extra amortization</th>
+                    {monthlyFee > 0 && <th className="p-3 text-right">Fee</th>}
                     <th className="p-3 text-right">Total to pay</th>
                     <th className="p-3 text-right">Balance after</th>
                     <th className="p-3 text-right">Current plan</th>
@@ -435,7 +451,8 @@ export default function MortgagePage() {
                       <td className="p-3 text-right">{money(row.payment)}</td>
                       <td className="p-3 text-right text-red-500 dark:text-loss">{money(row.interest)}</td>
                       <td className="p-3 text-right text-indigo-600 dark:text-brand-500">{money(row.extra)}</td>
-                      <td className="p-3 text-right font-semibold">{money(row.payment + row.extra)}</td>
+                      {monthlyFee > 0 && <td className="p-3 text-right text-gray-500 dark:text-ink-muted">{money(row.extra * feeRate)}</td>}
+                      <td className="p-3 text-right font-semibold">{money(row.payment + row.extra * (1 + feeRate))}</td>
                       <td className="p-3 text-right">{money(row.balance)}</td>
                       <td className="p-3 text-right text-gray-400 dark:text-ink-faint">{money(row.baseBalance)}</td>
                     </tr>
